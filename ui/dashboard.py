@@ -612,7 +612,11 @@ class DashboardWindow(QMainWindow):
         from ui.menu_management import MenuManagementWidget
         self.stack.addWidget(MenuManagementWidget(self.user))
 
-        for name in ["Point of Sale", "Table Manager", "Kitchen",
+        # Page 2 — POS
+        from ui.pos import POSWidget
+        self.stack.addWidget(POSWidget(self.user))
+
+        for name in ["Table Manager", "Kitchen",
                      "Inventory", "Reports", "Settings"]:
             ph = QWidget()
             ph.setStyleSheet(f"background-color: {COLORS['bg_primary']};")
