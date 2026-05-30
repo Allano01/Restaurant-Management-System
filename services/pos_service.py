@@ -165,3 +165,34 @@ def get_recent_orders(limit=20):
         return []
     finally:
         conn.close()
+def create_kitchen_order(order_id, cart,
+                         table_number=None,
+                         customer_name=None,
+                         notes=None):
+    conn = create_connection()
+    if not conn:
+        return False
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO kitchen_orders
+                (order_id, table_number, customer_name, notes)
+            VALUES (?, ?, ?, ?)
+        """, (order_id, table_number, customer_name, notes))
+        cursor.execute("SELECT @@IDENTITY")
+        kitchen_order_id = int(cursor.fetchone()[0])
+
+        for item in cart:
+            cursor.execute("""
+                INSERT INTO kitchen_order_items
+                    (kitchen_order_id, item_name, quantity)
+                VALUES (?, ?, ?)
+            """, (kitchen_order_id, item['name'], item['quantity']))
+
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error creating kitchen order: {e}")
+        return False
+    finally:
+        conn.close()

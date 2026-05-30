@@ -620,7 +620,11 @@ class DashboardWindow(QMainWindow):
         from ui.table_management import TableManagementWidget
         self.stack.addWidget(TableManagementWidget(self.user))
 
-        for name in ["Kitchen", "Inventory", "Reports", "Settings"]:
+        # Page 4 — Kitchen
+        from ui.kitchen import KitchenWidget
+        self.stack.addWidget(KitchenWidget(self.user))
+
+        for name in ["Inventory", "Reports", "Settings"]:
             ph = QWidget()
             ph.setStyleSheet(f"background-color: {COLORS['bg_primary']};")
             ph_layout = QVBoxLayout(ph)

@@ -1048,13 +1048,21 @@ class POSWidget(QWidget):
         )
 
         if result:
+            # Send to kitchen
+            from services.pos_service import create_kitchen_order
+            create_kitchen_order(
+                order_id=result['order_id'],
+                cart=self.cart.copy(),
+                customer_name=customer_name,
+            )
+
             receipt = ReceiptDialog(
-                order_data     = result,
-                cart           = self.cart.copy(),
-                customer_name  = customer_name,
-                payment_method = payment_data['method'],
-                user           = self.user,
-                parent         = self
+                order_data=result,
+                cart=self.cart.copy(),
+                customer_name=customer_name,
+                payment_method=payment_data['method'],
+                user=self.user,
+                parent=self
             )
             self.cart.clear()
             self.customer_input.clear()
