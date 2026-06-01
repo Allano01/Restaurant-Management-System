@@ -520,6 +520,7 @@ class DashboardWindow(QMainWindow):
             ("👨‍🍳", "Kitchen",         4),
             ("📦", "Inventory", 5),
             ("🏭", "Suppliers", 6),
+            ("👥", "Customers", 7),
         ]:
             add_nav(icon, label, idx)
 
@@ -633,8 +634,11 @@ class DashboardWindow(QMainWindow):
         from ui.suppliers import SupplierWidget
         self.stack.addWidget(SupplierWidget(self.user))
 
-        # Page 7 — Reports placeholder
-        # Page 8 — Settings placeholder
+        # Page 7 — Customers
+        from ui.customers import CustomerWidget
+        self.stack.addWidget(CustomerWidget(self.user))
+
+        # Pages 8 and 9 — Placeholders
         for name in ["Reports", "Settings"]:
             ph = QWidget()
             ph.setStyleSheet(f"background-color: {COLORS['bg_primary']};")
