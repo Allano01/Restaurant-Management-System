@@ -246,7 +246,9 @@ class PaymentDialog(QDialog):
 # ── Receipt dialog ────────────────────────────────────────────
 class ReceiptDialog(QDialog):
     def __init__(self, order_data, cart, customer_name,
-                 payment_method, user, parent=None):
+                 payment_method, user,
+                 points_earned=0, parent=None):
+        self.points_earned = points_earned
         super().__init__(parent)
         self.order_data     = order_data
         self.cart           = cart
@@ -358,6 +360,12 @@ class ReceiptDialog(QDialog):
             10, False, COLORS['text_muted'],
             Qt.AlignmentFlag.AlignCenter
         ))
+        if self.points_earned > 0:
+            layout.addWidget(lbl(
+                f"⭐  {self.points_earned} loyalty points earned!",
+                10, True, COLORS['accent'],
+                Qt.AlignmentFlag.AlignCenter
+            ))
 
         # Buttons
         btn_row = QHBoxLayout()
@@ -438,6 +446,7 @@ class POSWidget(QWidget):
         self.categories  = []
         self.active_cat  = "All"
         self.discount_pct = 0
+        self.linked_customer = None  # stores linked customer tuple
         self.setStyleSheet(f"background-color: {COLORS['bg_primary']};")
         self.setup_ui()
         self.load_menu()
@@ -565,15 +574,19 @@ class POSWidget(QWidget):
         order_title.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
         order_title.setStyleSheet(f"color: {COLORS['text_primary']};")
 
-        # Customer name
-        cust_lbl = QLabel("Customer Name (optional)")
+        # Customer section
+        cust_lbl = QLabel("Customer")
         cust_lbl.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
         cust_lbl.setStyleSheet(f"color: {COLORS['text_secondary']};")
 
-        self.customer_input = QLineEdit()
-        self.customer_input.setPlaceholderText("e.g. John Doe")
-        self.customer_input.setFixedHeight(38)
-        self.customer_input.setStyleSheet(f"""
+        # Phone search row
+        phone_row = QHBoxLayout()
+        phone_row.setSpacing(6)
+
+        self.phone_input = QLineEdit()
+        self.phone_input.setPlaceholderText("Search by phone...")
+        self.phone_input.setFixedHeight(38)
+        self.phone_input.setStyleSheet(f"""
             QLineEdit {{
                 background-color: {COLORS['bg_tertiary']};
                 border: 1.5px solid {COLORS['border']};
@@ -588,7 +601,109 @@ class POSWidget(QWidget):
                 background-color: white;
             }}
         """)
+        self.phone_input.returnPressed.connect(self.search_customer)
 
+        search_btn = QPushButton("🔍")
+        search_btn.setFixedSize(38, 38)
+        search_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        search_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {COLORS['accent']};
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 15px;
+            }}
+            QPushButton:hover {{
+                background-color: {COLORS['accent_hover']};
+            }}
+        """)
+        search_btn.clicked.connect(self.search_customer)
+
+        add_cust_btn = QPushButton("➕")
+        add_cust_btn.setFixedSize(38, 38)
+        add_cust_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        add_cust_btn.setToolTip("Add new customer")
+        add_cust_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {COLORS['bg_tertiary']};
+                color: {COLORS['accent']};
+                border: 1.5px solid {COLORS['accent']};
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {COLORS['accent_light']};
+            }}
+        """)
+        add_cust_btn.clicked.connect(self.add_new_customer)
+
+        phone_row.addWidget(self.phone_input)
+        phone_row.addWidget(search_btn)
+        phone_row.addWidget(add_cust_btn)
+
+        # Customer info card (shown after search)
+        self.customer_card = QFrame()
+        self.customer_card.setFixedHeight(60)
+        self.customer_card.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLORS['accent_light']};
+                border-radius: 8px;
+                border: 1.5px solid {COLORS['accent']};
+            }}
+            QLabel {{ background: transparent; border: none; }}
+        """)
+        self.customer_card.hide()
+
+        card_layout = QHBoxLayout(self.customer_card)
+        card_layout.setContentsMargins(12, 8, 12, 8)
+        card_layout.setSpacing(8)
+
+        self.cust_avatar = QLabel("👤")
+        self.cust_avatar.setFont(QFont("Segoe UI", 18))
+        self.cust_avatar.setStyleSheet("color: transparent;")
+
+        cust_text_col = QVBoxLayout()
+        cust_text_col.setSpacing(0)
+        self.cust_name_lbl = QLabel("")
+        self.cust_name_lbl.setFont(
+            QFont("Segoe UI", 11, QFont.Weight.Bold)
+        )
+        self.cust_name_lbl.setStyleSheet(
+            f"color: {COLORS['accent_text']};"
+        )
+        self.cust_points_lbl = QLabel("")
+        self.cust_points_lbl.setFont(QFont("Segoe UI", 9))
+        self.cust_points_lbl.setStyleSheet(
+            f"color: {COLORS['accent']};"
+        )
+        cust_text_col.addWidget(self.cust_name_lbl)
+        cust_text_col.addWidget(self.cust_points_lbl)
+
+        clear_cust_btn = QPushButton("✕")
+        clear_cust_btn.setFixedSize(24, 24)
+        clear_cust_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        clear_cust_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {COLORS['accent']};
+                border: none;
+                font-size: 14px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ color: {COLORS['danger']}; }}
+        """)
+        clear_cust_btn.clicked.connect(self.clear_customer)
+
+        card_layout.addWidget(self.cust_avatar)
+        card_layout.addLayout(cust_text_col)
+        card_layout.addStretch()
+        card_layout.addWidget(clear_cust_btn)
+
+        # Hidden customer name (used internally)
+        self.customer_input = QLineEdit()
+        self.customer_input.hide()
         div1 = QFrame()
         div1.setFixedHeight(1)
         div1.setStyleSheet(f"background: {COLORS['border']}; border: none;")
@@ -718,6 +833,8 @@ class POSWidget(QWidget):
 
         right_layout.addWidget(order_title)
         right_layout.addWidget(cust_lbl)
+        right_layout.addLayout(phone_row)
+        right_layout.addWidget(self.customer_card)
         right_layout.addWidget(self.customer_input)
         right_layout.addWidget(div1)
         right_layout.addWidget(self.cart_scroll)
@@ -995,6 +1112,211 @@ class POSWidget(QWidget):
                 self.discount_spin.setValue(0)
                 self.refresh_cart()
 
+    def search_customer(self):
+        phone = self.phone_input.text().strip()
+        if not phone:
+            QMessageBox.warning(
+                self, "No Phone",
+                "Please enter a phone number to search."
+            )
+            return
+
+        from services.pos_service import search_customer_by_phone
+        customer = search_customer_by_phone(phone)
+
+        if customer:
+            self.set_customer(customer)
+        else:
+            reply = QMessageBox.question(
+                self, "Customer Not Found",
+                f"No customer found with phone '{phone}'.\n\n"
+                f"Would you like to add them as a new customer?",
+                QMessageBox.StandardButton.Yes |
+                QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                self.add_new_customer(
+                    prefill_phone=phone
+                )
+
+    def set_customer(self, customer):
+        self.linked_customer = customer
+        self.cust_name_lbl.setText(customer[1])
+        self.cust_points_lbl.setText(
+            f"⭐  {customer[3]} loyalty points"
+        )
+        self.customer_card.show()
+        self.customer_input.setText(customer[1])
+        self.phone_input.clear()
+
+    def clear_customer(self):
+        self.linked_customer = None
+        self.customer_card.hide()
+        self.customer_input.clear()
+        self.phone_input.clear()
+
+    def add_new_customer(self, prefill_phone=None):
+        from PyQt6.QtWidgets import QDialog, QFormLayout
+        from PyQt6.QtCore import QDate
+        from PyQt6.QtWidgets import QDateEdit
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Add New Customer")
+        dialog.setFixedSize(400, 360)
+        dialog.setStyleSheet(f"""
+            QDialog {{
+                background-color: {COLORS['bg_secondary']};
+            }}
+            QLabel {{
+                background: transparent;
+                color: {COLORS['text_primary']};
+                font-family: Segoe UI;
+            }}
+        """)
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(14)
+
+        title = QLabel("Add New Customer")
+        title.setFont(QFont("Segoe UI", 15, QFont.Weight.Bold))
+        title.setStyleSheet(f"color: {COLORS['text_primary']};")
+
+        sub = QLabel("Customer will be saved and linked to this order.")
+        sub.setFont(QFont("Segoe UI", 10))
+        sub.setStyleSheet(f"color: {COLORS['text_muted']};")
+
+        div = QFrame()
+        div.setFixedHeight(1)
+        div.setStyleSheet(
+            f"background: {COLORS['border']}; border: none;"
+        )
+
+        form = QFormLayout()
+        form.setSpacing(10)
+
+        input_style = f"""
+            QLineEdit {{
+                background-color: {COLORS['bg_tertiary']};
+                border: 1.5px solid {COLORS['border']};
+                border-radius: 8px;
+                padding: 8px 12px;
+                color: {COLORS['text_primary']};
+                font-size: 13px;
+                font-family: Segoe UI;
+            }}
+            QLineEdit:focus {{
+                border-color: {COLORS['accent']};
+                background-color: white;
+            }}
+        """
+
+        name_input = QLineEdit()
+        phone_input = QLineEdit()
+        email_input = QLineEdit()
+
+        for widget, placeholder in [
+            (name_input, "Full name *"),
+            (phone_input, "Phone number"),
+            (email_input, "Email (optional)"),
+        ]:
+            widget.setPlaceholderText(placeholder)
+            widget.setFixedHeight(38)
+            widget.setStyleSheet(input_style)
+
+        if prefill_phone:
+            phone_input.setText(prefill_phone)
+
+        for lbl, widget in [
+            ("Full Name *", name_input),
+            ("Phone", phone_input),
+            ("Email", email_input),
+        ]:
+            l = QLabel(lbl)
+            l.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+            l.setStyleSheet(f"color: {COLORS['text_secondary']};")
+            form.addRow(l, widget)
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
+
+        cancel_btn = QPushButton("Skip")
+        cancel_btn.setFixedHeight(40)
+        cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        cancel_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {COLORS['bg_tertiary']};
+                color: {COLORS['text_secondary']};
+                border: 1.5px solid {COLORS['border']};
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: 600;
+                font-family: Segoe UI;
+            }}
+            QPushButton:hover {{
+                background-color: {COLORS['border']};
+            }}
+        """)
+        cancel_btn.clicked.connect(dialog.reject)
+
+        save_btn = QPushButton("Save & Link")
+        save_btn.setFixedHeight(40)
+        save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        save_btn.setStyleSheet(primary_button())
+        save_btn.clicked.connect(dialog.accept)
+
+        btn_row.addWidget(cancel_btn)
+        btn_row.addWidget(save_btn)
+
+        layout.addWidget(title)
+        layout.addWidget(sub)
+        layout.addWidget(div)
+        layout.addLayout(form)
+        layout.addStretch()
+        layout.addLayout(btn_row)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            name = name_input.text().strip()
+            phone = phone_input.text().strip()
+            email = email_input.text().strip()
+
+            if not name:
+                QMessageBox.warning(
+                    self, "Validation",
+                    "Customer name is required."
+                )
+                return
+
+            from services.customer_service import add_customer
+            customer_id = add_customer(
+                name, phone, email, None, None
+            )
+
+            if customer_id:
+                from services.pos_service import (
+                    search_customer_by_phone
+                )
+                if phone:
+                    customer = search_customer_by_phone(phone)
+                    if customer:
+                        self.set_customer(customer)
+                        return
+                # Fallback if no phone
+                self.customer_input.setText(name)
+                self.linked_customer = (
+                    customer_id, name, phone, 0
+                )
+                self.cust_name_lbl.setText(name)
+                self.cust_points_lbl.setText("⭐  0 loyalty points")
+                self.customer_card.show()
+            else:
+                QMessageBox.warning(
+                    self, "Warning",
+                    "Could not save customer. "
+                    "Phone may already exist.\n"
+                    "Order will continue without customer link."
+                )
+
     def update_totals(self):
         discount_pct    = self.discount_spin.value()
         tax_rate        = float(get_setting('tax_rate') or 16)
@@ -1048,24 +1370,49 @@ class POSWidget(QWidget):
         )
 
         if result:
+            # Award loyalty points if customer linked
+            points_earned = 0
+            if self.linked_customer:
+                from services.pos_service import award_loyalty_points
+                pts = award_loyalty_points(
+                    self.linked_customer[0],
+                    result['order_id'],
+                    result['total_amount'],
+                    self.user['user_id']
+                )
+                if pts:
+                    points_earned = pts
+
             # Send to kitchen
             from services.pos_service import create_kitchen_order
             create_kitchen_order(
                 order_id=result['order_id'],
                 cart=self.cart.copy(),
-                customer_name=customer_name,
+                customer_name=(
+                    self.linked_customer[1]
+                    if self.linked_customer
+                    else customer_name
+                ),
             )
 
+            # Show receipt
             receipt = ReceiptDialog(
                 order_data=result,
                 cart=self.cart.copy(),
-                customer_name=customer_name,
+                customer_name=(
+                    self.linked_customer[1]
+                    if self.linked_customer
+                    else customer_name
+                ),
                 payment_method=payment_data['method'],
                 user=self.user,
+                points_earned=points_earned,
                 parent=self
             )
             self.cart.clear()
             self.customer_input.clear()
+            self.phone_input.clear()
+            self.clear_customer()
             self.discount_spin.setValue(0)
             self.refresh_cart()
             receipt.exec()

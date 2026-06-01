@@ -196,3 +196,91 @@ def create_kitchen_order(order_id, cart,
         return False
     finally:
         conn.close()
+def search_customer_by_phone(phone):
+    conn = create_connection()
+    if not conn:
+        return None
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT
+                c.customer_id,
+                c.full_name,
+                c.phone,
+                COALESCE(la.points_balance, 0) AS points
+            FROM customers c
+            LEFT JOIN loyalty_accounts la
+                ON c.customer_id = la.customer_id
+            WHERE c.phone = ?
+        """, (phone,))
+        return cursor.fetchone()
+    except Exception as e:
+        print(f"Error searching customer: {e}")
+        return None
+    finally:
+        conn.close()
+
+
+def award_loyalty_points(customer_id, order_id,
+                         total_amount, user_id):
+    conn = create_connection()
+    if not conn:
+        return False
+    try:
+        cursor = conn.cursor()
+
+        # Get points rate from settings
+        cursor.execute("""
+            SELECT [value] FROM settings
+            WHERE [key] = 'loyalty_points_per_dollar'
+        """)
+        row   = cursor.fetchone()
+        rate  = float(row[0]) if row else 1.0
+        points = int(total_amount * rate)
+
+        if points <= 0:
+            return False
+
+        # Get loyalty account
+        cursor.execute("""
+            SELECT loyalty_id
+            FROM loyalty_accounts
+            WHERE customer_id = ?
+        """, (customer_id,))
+        row = cursor.fetchone()
+        if not row:
+            return False
+        loyalty_id = row[0]
+
+        # Update points balance
+        cursor.execute("""
+            UPDATE loyalty_accounts
+            SET points_balance = points_balance + ?,
+                total_earned   = total_earned + ?
+            WHERE loyalty_id = ?
+        """, (points, points, loyalty_id))
+
+        # Log transaction
+        cursor.execute("""
+            INSERT INTO loyalty_transactions
+                (loyalty_id, transaction_type,
+                 points, reference, notes)
+            VALUES (?, 'Earned', ?, ?, ?)
+        """, (loyalty_id, points,
+              f"Order #{order_id}",
+              f"Auto awarded from POS"))
+
+        # Link order to customer
+        cursor.execute("""
+            UPDATE orders
+            SET customer_id = ?
+            WHERE order_id  = ?
+        """, (customer_id, order_id))
+
+        conn.commit()
+        return points
+    except Exception as e:
+        print(f"Error awarding points: {e}")
+        return False
+    finally:
+        conn.close()
