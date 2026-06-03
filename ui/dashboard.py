@@ -521,13 +521,14 @@ class DashboardWindow(QMainWindow):
             ("📦", "Inventory", 5),
             ("🏭", "Suppliers", 6),
             ("👥", "Customers", 7),
+            ("📅", "Reservations", 8),
         ]:
             add_nav(icon, label, idx)
 
         sidebar_layout.addWidget(nav_section("MANAGEMENT"))
         for icon, label, idx in [
-            ("📊", "Reports", 7),
-            ("⚙️", "Settings", 8),
+            ("📊", "Reports", 9),
+            ("⚙️", "Settings", 10),
         ]:
             add_nav(icon, label, idx)
 
@@ -637,8 +638,11 @@ class DashboardWindow(QMainWindow):
         # Page 7 — Customers
         from ui.customers import CustomerWidget
         self.stack.addWidget(CustomerWidget(self.user))
+        # Page 8 — Reservations
+        from ui.reservations import ReservationsWidget
+        self.stack.addWidget(ReservationsWidget(self.user))
 
-        # Pages 8 and 9 — Placeholders
+        # Pages 9 and 10 — Placeholders
         for name in ["Reports", "Settings"]:
             ph = QWidget()
             ph.setStyleSheet(f"background-color: {COLORS['bg_primary']};")
