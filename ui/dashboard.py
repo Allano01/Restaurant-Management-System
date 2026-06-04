@@ -646,6 +646,9 @@ class DashboardWindow(QMainWindow):
         # Page 9 — Reports
         from ui.reports import ReportsWidget
         self.stack.addWidget(ReportsWidget(self.user))
+        # Page 10 — Settings
+        from ui.admin_settings import SettingsWidget
+        self.stack.addWidget(SettingsWidget(self.user))
         # Pages 9 and 10 — Placeholders
         for name in ["Reports", "Settings"]:
             ph = QWidget()
