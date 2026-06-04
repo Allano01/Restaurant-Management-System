@@ -522,6 +522,8 @@ class DashboardWindow(QMainWindow):
             ("🏭", "Suppliers", 6),
             ("👥", "Customers", 7),
             ("📅", "Reservations", 8),
+            ("📊", "Reports", 9),
+            ("⚙️", "Settings", 10),
         ]:
             add_nav(icon, label, idx)
 
@@ -641,7 +643,9 @@ class DashboardWindow(QMainWindow):
         # Page 8 — Reservations
         from ui.reservations import ReservationsWidget
         self.stack.addWidget(ReservationsWidget(self.user))
-
+        # Page 9 — Reports
+        from ui.reports import ReportsWidget
+        self.stack.addWidget(ReportsWidget(self.user))
         # Pages 9 and 10 — Placeholders
         for name in ["Reports", "Settings"]:
             ph = QWidget()
