@@ -16,7 +16,10 @@ from services.supplier_service import (
     get_supplier_stats
 )
 from services.inventory_service import get_all_ingredients
-from assets.styles import COLORS, primary_button, outline_button
+from assets.styles import (
+    COLORS, primary_button, outline_button,
+    table_stylesheet, configure_table
+)
 
 
 # ── Status colours ────────────────────────────────────────────
@@ -358,30 +361,15 @@ class CreatePODialog(QDialog):
             "INGREDIENT", "QTY", "UNIT COST",
             "SUBTOTAL", "REMOVE"
         ])
-        self.items_table.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {COLORS['bg_secondary']};
-                color: {COLORS['text_primary']};
-                border: 1px solid {COLORS['border']};
-                border-radius: 8px;
-                font-family: Segoe UI;
-                font-size: 12px;
-                outline: none;
-                gridline-color: {COLORS['border']};
-            }}
-            QTableWidget::item {{
-                padding: 8px 10px;
-            }}
-            QHeaderView::section {{
-                background-color: {COLORS['bg_tertiary']};
-                color: {COLORS['text_secondary']};
-                padding: 8px;
-                border: none;
-                font-weight: bold;
-                font-size: 11px;
-                font-family: Segoe UI;
-            }}
-        """)
+        self.items_table.setStyleSheet(
+            table_stylesheet(
+                border="1px solid {0}".format(COLORS['border']),
+                border_radius="8px",
+                item_padding="8px 10px",
+                font_size="12px",
+                header_padding="8px",
+            )
+        )
         self.items_table.setFixedHeight(180)
         self.items_table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.Stretch
@@ -607,27 +595,17 @@ class POItemsDialog(QDialog):
             "INGREDIENT", "QTY", "UNIT",
             "UNIT COST", "SUBTOTAL"
         ])
-        table.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {COLORS['bg_tertiary']};
-                color: {COLORS['text_primary']};
-                border: 1px solid {COLORS['border']};
-                border-radius: 8px;
-                font-family: Segoe UI;
-                font-size: 12px;
-                outline: none;
-            }}
-            QTableWidget::item {{ padding: 8px 10px; }}
-            QHeaderView::section {{
-                background-color: {COLORS['bg_secondary']};
-                color: {COLORS['text_secondary']};
-                padding: 8px;
-                border: none;
-                font-weight: bold;
-                font-size: 11px;
-                font-family: Segoe UI;
-            }}
-        """)
+        table.setStyleSheet(
+            table_stylesheet(
+                background_color=COLORS['bg_tertiary'],
+                border="1px solid {0}".format(COLORS['border']),
+                border_radius="8px",
+                item_padding="8px 10px",
+                font_size="12px",
+                header_background=COLORS['bg_secondary'],
+                header_padding="8px",
+            )
+        )
         table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.Stretch
         )
@@ -812,64 +790,39 @@ class SupplierWidget(QWidget):
             "PHONE", "ORDERS", "TOTAL VALUE",
             "ACTIONS"
         ])
-        self.sup_table.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {COLORS['bg_secondary']};
-                color: {COLORS['text_primary']};
-                border: none;
-                gridline-color: transparent;
-                font-family: Segoe UI;
-                font-size: 13px;
-                outline: none;
-            }}
-            QTableWidget::item {{
-                padding: 0px 12px;
-                border-bottom: 1px solid {COLORS['border']};
-            }}
-            QTableWidget::item:selected {{
-                background-color: {COLORS['accent_light']};
-                color: {COLORS['accent_text']};
-            }}
-            QHeaderView::section {{
-                background-color: {COLORS['bg_tertiary']};
-                color: {COLORS['text_secondary']};
-                padding: 12px;
-                border: none;
-                border-bottom: 2px solid {COLORS['border']};
-                font-weight: bold;
-                font-size: 11px;
-                font-family: Segoe UI;
-            }}
-            QScrollBar:vertical {{
-                background: {COLORS['bg_tertiary']};
-                width: 6px; border-radius: 3px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {COLORS['border_strong']};
-                border-radius: 3px;
-            }}
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {{ height: 0; }}
-        """)
-        self.sup_table.setColumnWidth(0, 50)
-        self.sup_table.setColumnWidth(3, 140)
-        self.sup_table.setColumnWidth(4, 80)
-        self.sup_table.setColumnWidth(5, 110)
-        self.sup_table.setColumnWidth(6, 80)
-        self.sup_table.horizontalHeader().setSectionResizeMode(
+        self.sup_table.setStyleSheet(
+            table_stylesheet()
+        )
+        self.sup_table.setColumnWidth(0, 60)
+        self.sup_table.setColumnWidth(3, 160)
+        self.sup_table.setColumnWidth(4, 90)
+        self.sup_table.setColumnWidth(5, 120)
+        self.sup_table.setColumnWidth(6, 90)
+        header = self.sup_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(
             1, QHeaderView.ResizeMode.Stretch
         )
-        self.sup_table.horizontalHeader().setSectionResizeMode(
+        header.setSectionResizeMode(
             2, QHeaderView.ResizeMode.Stretch
         )
-        self.sup_table.verticalHeader().setVisible(False)
-        self.sup_table.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
+        header.setDefaultAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
         )
+        self.sup_table.horizontalHeaderItem(1).setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.sup_table.horizontalHeaderItem(2).setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        header.setStretchLastSection(False)
+        configure_table(self.sup_table, row_height=44)
         self.sup_table.setEditTriggers(
             QTableWidget.EditTrigger.NoEditTriggers
         )
-        self.sup_table.setShowGrid(False)
         layout.addWidget(self.sup_table)
 
     def setup_po_tab(self):
@@ -884,56 +837,41 @@ class SupplierWidget(QWidget):
             "TOTAL", "EXPECTED DATE",
             "CREATED", "ACTIONS"
         ])
-        self.po_table.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {COLORS['bg_secondary']};
-                color: {COLORS['text_primary']};
-                border: none;
-                gridline-color: transparent;
-                font-family: Segoe UI;
-                font-size: 13px;
-                outline: none;
-            }}
-            QTableWidget::item {{
-                padding: 0px 12px;
-                border-bottom: 1px solid {COLORS['border']};
-            }}
-            QTableWidget::item:selected {{
-                background-color: {COLORS['accent_light']};
-                color: {COLORS['accent_text']};
-            }}
-            QHeaderView::section {{
-                background-color: {COLORS['bg_tertiary']};
-                color: {COLORS['text_secondary']};
-                padding: 12px;
-                border: none;
-                border-bottom: 2px solid {COLORS['border']};
-                font-weight: bold;
-                font-size: 11px;
-                font-family: Segoe UI;
-            }}
-            QScrollBar:vertical {{
-                background: {COLORS['bg_tertiary']};
-                width: 6px; border-radius: 3px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {COLORS['border_strong']};
-                border-radius: 3px;
-            }}
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {{ height: 0; }}
-        """)
-        self.po_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
+        self.po_table.setStyleSheet(
+            table_stylesheet()
         )
-        self.po_table.verticalHeader().setVisible(False)
-        self.po_table.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
+        self.po_table.setColumnWidth(0, 90)
+        self.po_table.setColumnWidth(1, 180)
+        self.po_table.setColumnWidth(2, 120)
+        self.po_table.setColumnWidth(3, 110)
+        self.po_table.setColumnWidth(4, 130)
+        self.po_table.setColumnWidth(5, 120)
+        self.po_table.setColumnWidth(6, 90)
+        header = self.po_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)
+        header.setStretchLastSection(False)
+        header.setDefaultAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
         )
+        self.po_table.horizontalHeaderItem(0).setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.po_table.horizontalHeaderItem(1).setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        configure_table(self.po_table, row_height=44)
         self.po_table.setEditTriggers(
             QTableWidget.EditTrigger.NoEditTriggers
         )
-        self.po_table.setShowGrid(False)
         layout.addWidget(self.po_table)
 
     def load_data(self):
@@ -970,7 +908,7 @@ class SupplierWidget(QWidget):
         self.sup_table.setRowCount(len(self.suppliers))
 
         for idx, sup in enumerate(self.suppliers):
-            self.sup_table.setRowHeight(idx, 52)
+            self.sup_table.setRowHeight(idx, 44)
 
             id_item = QTableWidgetItem(str(sup[0]))
             id_item.setTextAlignment(
@@ -1021,20 +959,23 @@ class SupplierWidget(QWidget):
             self.sup_table.setItem(idx, 5, value_item)
 
             dots_btn = QPushButton("⋮")
-            dots_btn.setFixedSize(32, 32)
+            dots_btn.setFixedSize(28, 28)
             dots_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            dots_btn.setToolTip("Actions")
             dots_btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: transparent;
-                    color: {COLORS['text_secondary']};
-                    border: 1px solid {COLORS['border']};
+                    color: #9ca3af;
+                    border: 1px solid #e5e7eb;
                     border-radius: 6px;
-                    font-size: 18px;
+                    font-size: 16px;
                     font-weight: bold;
-                    padding-bottom: 4px;
+                    padding-bottom: 3px;
                 }}
                 QPushButton:hover {{
-                    background-color: {COLORS['bg_tertiary']};
+                    background-color: {COLORS['accent_light']};
+                    border-color: {COLORS['accent']};
+                    color: {COLORS['accent']};
                 }}
             """)
             dots_btn.clicked.connect(
@@ -1058,7 +999,7 @@ class SupplierWidget(QWidget):
         self.po_table.setRowCount(len(orders))
 
         for idx, po in enumerate(orders):
-            self.po_table.setRowHeight(idx, 52)
+            self.po_table.setRowHeight(idx, 44)
 
             self.po_table.setItem(
                 idx, 0,
@@ -1123,20 +1064,23 @@ class SupplierWidget(QWidget):
             )
 
             dots_btn = QPushButton("⋮")
-            dots_btn.setFixedSize(32, 32)
+            dots_btn.setFixedSize(28, 28)
             dots_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            dots_btn.setToolTip("Actions")
             dots_btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: transparent;
-                    color: {COLORS['text_secondary']};
-                    border: 1px solid {COLORS['border']};
+                    color: #9ca3af;
+                    border: 1px solid #e5e7eb;
                     border-radius: 6px;
-                    font-size: 18px;
+                    font-size: 16px;
                     font-weight: bold;
-                    padding-bottom: 4px;
+                    padding-bottom: 3px;
                 }}
                 QPushButton:hover {{
-                    background-color: {COLORS['bg_tertiary']};
+                    background-color: {COLORS['accent_light']};
+                    border-color: {COLORS['accent']};
+                    color: {COLORS['accent']};
                 }}
             """)
             dots_btn.clicked.connect(

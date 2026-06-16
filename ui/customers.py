@@ -13,7 +13,7 @@ from services.customer_service import (
     get_loyalty_transactions, add_loyalty_points,
     redeem_loyalty_points, get_customer_stats
 )
-from assets.styles import COLORS, primary_button, outline_button
+from assets.styles import COLORS, primary_button, outline_button, table_stylesheet
 
 
 # ── Customer dialog ───────────────────────────────────────────
@@ -330,29 +330,15 @@ class CustomerDetailDialog(QDialog):
         orders_table.setHorizontalHeaderLabels([
             "ORDER #", "TOTAL", "PAYMENT", "DATE"
         ])
-        orders_table.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {COLORS['bg_tertiary']};
-                color: {COLORS['text_primary']};
-                border: none;
-                font-family: Segoe UI;
-                font-size: 12px;
-                outline: none;
-            }}
-            QTableWidget::item {{
-                padding: 8px 10px;
-                border-bottom: 1px solid {COLORS['border']};
-            }}
-            QHeaderView::section {{
-                background-color: {COLORS['bg_secondary']};
-                color: {COLORS['text_secondary']};
-                padding: 8px;
-                border: none;
-                font-weight: bold;
-                font-size: 11px;
-                font-family: Segoe UI;
-            }}
-        """)
+        orders_table.setStyleSheet(
+            table_stylesheet(
+                background_color=COLORS['bg_tertiary'],
+                header_background=COLORS['bg_secondary'],
+                item_padding="8px 10px",
+                font_size="12px",
+                header_padding="8px",
+            )
+        )
         orders_table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
@@ -422,29 +408,15 @@ class CustomerDetailDialog(QDialog):
         loyalty_table.setHorizontalHeaderLabels([
             "TYPE", "POINTS", "REFERENCE", "DATE"
         ])
-        loyalty_table.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {COLORS['bg_tertiary']};
-                color: {COLORS['text_primary']};
-                border: none;
-                font-family: Segoe UI;
-                font-size: 12px;
-                outline: none;
-            }}
-            QTableWidget::item {{
-                padding: 8px 10px;
-                border-bottom: 1px solid {COLORS['border']};
-            }}
-            QHeaderView::section {{
-                background-color: {COLORS['bg_secondary']};
-                color: {COLORS['text_secondary']};
-                padding: 8px;
-                border: none;
-                font-weight: bold;
-                font-size: 11px;
-                font-family: Segoe UI;
-            }}
-        """)
+        loyalty_table.setStyleSheet(
+            table_stylesheet(
+                background_color=COLORS['bg_tertiary'],
+                header_background=COLORS['bg_secondary'],
+                item_padding="8px 10px",
+                font_size="12px",
+                header_padding="8px",
+            )
+        )
         loyalty_table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
@@ -752,58 +724,66 @@ class CustomerWidget(QWidget):
             "ORDERS", "TOTAL SPENT",
             "LOYALTY PTS", "STATUS", "ACTIONS"
         ])
-        self.table.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {COLORS['bg_secondary']};
-                color: {COLORS['text_primary']};
-                border: none;
-                gridline-color: transparent;
-                font-family: Segoe UI;
-                font-size: 13px;
-                outline: none;
-            }}
-            QTableWidget::item {{
-                padding: 0px 12px;
-                border-bottom: 1px solid {COLORS['border']};
-            }}
-            QTableWidget::item:selected {{
-                background-color: {COLORS['accent_light']};
-                color: {COLORS['accent_text']};
-            }}
-            QHeaderView::section {{
-                background-color: {COLORS['bg_tertiary']};
-                color: {COLORS['text_secondary']};
-                padding: 12px;
-                border: none;
-                border-bottom: 2px solid {COLORS['border']};
-                font-weight: bold;
-                font-size: 11px;
-                font-family: Segoe UI;
-            }}
-            QScrollBar:vertical {{
-                background: {COLORS['bg_tertiary']};
-                width: 6px; border-radius: 3px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {COLORS['border_strong']};
-                border-radius: 3px;
-            }}
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {{ height: 0; }}
-        """)
+        self.table.setStyleSheet(
+            table_stylesheet()
+        )
 
         self.table.setColumnWidth(0, 50)
-        self.table.setColumnWidth(3, 80)
-        self.table.setColumnWidth(4, 110)
-        self.table.setColumnWidth(5, 110)
-        self.table.setColumnWidth(6, 100)
+        self.table.setColumnWidth(1, 180)
+        self.table.setColumnWidth(2, 150)
+        self.table.setColumnWidth(3, 100)
+        self.table.setColumnWidth(4, 150)
+        self.table.setColumnWidth(5, 120)
+        self.table.setColumnWidth(6, 110)
         self.table.setColumnWidth(7, 80)
-        self.table.horizontalHeader().setSectionResizeMode(
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(
             1, QHeaderView.ResizeMode.Stretch
         )
-        self.table.horizontalHeader().setSectionResizeMode(
+        header.setSectionResizeMode(
             2, QHeaderView.ResizeMode.Stretch
         )
+        header.setSectionResizeMode(
+            3, QHeaderView.ResizeMode.Fixed
+        )
+        header.setSectionResizeMode(
+            4, QHeaderView.ResizeMode.Fixed
+        )
+        header.setSectionResizeMode(
+            5, QHeaderView.ResizeMode.Fixed
+        )
+        header.setSectionResizeMode(
+            6, QHeaderView.ResizeMode.Fixed
+        )
+        header.setSectionResizeMode(
+            7, QHeaderView.ResizeMode.Fixed
+        )
+        header.setDefaultAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.table.horizontalHeaderItem(1).setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.table.horizontalHeaderItem(2).setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.table.horizontalHeaderItem(3).setTextAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.table.horizontalHeaderItem(4).setTextAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.table.horizontalHeaderItem(5).setTextAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        header.setStretchLastSection(False)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows

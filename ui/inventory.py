@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QFrame, QTableWidget, QTableWidgetItem, QHeaderView,
     QDialog, QFormLayout, QLineEdit, QComboBox, QSpinBox,
     QDoubleSpinBox, QMessageBox, QGraphicsDropShadowEffect,
-    QTabWidget, QTextEdit, QMenu, QAbstractItemView
+    QTabWidget, QTextEdit, QMenu
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QColor, QCursor
@@ -14,7 +14,10 @@ from services.inventory_service import (
     get_transactions, get_inventory_stats,
     delete_ingredient
 )
-from assets.styles import COLORS, primary_button, outline_button
+from assets.styles import (
+    COLORS, primary_button, outline_button,
+    table_stylesheet, configure_table
+)
 
 
 # ── Stock status colours ──────────────────────────────────────
@@ -569,7 +572,7 @@ class InventoryWidget(QWidget):
             f"background-color: {COLORS['bg_secondary']};"
         )
         self.setup_ingredients_tab()
-        self.tabs.addTab(self.ingredients_tab, "🥬  Ingredients")
+        self.tabs.addTab(self.ingredients_tab, "📦  Ingredients")
 
         # Tab 2: Transactions
         self.transactions_tab = QWidget()
@@ -578,7 +581,7 @@ class InventoryWidget(QWidget):
         )
         self.setup_transactions_tab()
         self.tabs.addTab(
-            self.transactions_tab, "📋  Transaction History"
+            self.transactions_tab, "🔄  Transaction History"
         )
 
         layout.addLayout(header_row)
@@ -675,68 +678,67 @@ class InventoryWidget(QWidget):
             "UNIT COST", "STOCK VALUE",
             "STATUS", "ACTIONS"
         ])
-        self.ing_table.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {COLORS['bg_secondary']};
-                color: {COLORS['text_primary']};
-                border: none;
-                gridline-color: transparent;
-                font-family: Segoe UI;
-                font-size: 13px;
-                outline: none;
-            }}
-            QTableWidget::item {{
-                padding: 0px 12px;
-                border-bottom: 1px solid {COLORS['border']};
-            }}
-            QTableWidget::item:selected {{
-                background-color: {COLORS['accent_light']};
-                color: {COLORS['accent_text']};
-            }}
-            QHeaderView::section {{
-                background-color: {COLORS['bg_tertiary']};
-                color: {COLORS['text_secondary']};
-                padding: 12px;
-                border: none;
-                border-bottom: 2px solid {COLORS['border']};
-                font-weight: bold;
-                font-size: 11px;
-                font-family: Segoe UI;
-            }}
-            QScrollBar:vertical {{
-                background: {COLORS['bg_tertiary']};
-                width: 6px; border-radius: 3px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {COLORS['border_strong']};
-                border-radius: 3px;
-            }}
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {{ height: 0; }}
-        """)
+        self.ing_table.setStyleSheet(
+            table_stylesheet(
+                item_padding="0 12px",
+                header_padding="14px 16px",
+                header_font_size="12px"
+            )
+        )
 
-        self.ing_table.setColumnWidth(0, 50)
-        self.ing_table.setColumnWidth(2, 70)
+        self.ing_table.setColumnWidth(0, 70)
+        self.ing_table.setColumnWidth(2, 80)
         self.ing_table.setColumnWidth(3, 120)
-        self.ing_table.setColumnWidth(4, 100)
-        self.ing_table.setColumnWidth(5, 90)
-        self.ing_table.setColumnWidth(6, 100)
-        self.ing_table.setColumnWidth(7, 120)
-        self.ing_table.setColumnWidth(8, 80)
-        self.ing_table.horizontalHeader().setSectionResizeMode(
-            1, QHeaderView.ResizeMode.Stretch
+        self.ing_table.setColumnWidth(4, 110)
+        self.ing_table.setColumnWidth(5, 100)
+        self.ing_table.setColumnWidth(6, 110)
+        self.ing_table.setColumnWidth(7, 160)
+        self.ing_table.setColumnWidth(8, 120)
+        header = self.ing_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(8, QHeaderView.ResizeMode.Fixed)
+        header.setStretchLastSection(False)
+        header.setDefaultAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
         )
-        self.ing_table.verticalHeader().setVisible(False)
-        self.ing_table.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
+        self.ing_table.horizontalHeaderItem(1).setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft |
+            Qt.AlignmentFlag.AlignVCenter
         )
+        configure_table(self.ing_table, row_height=58)
         self.ing_table.setEditTriggers(
             QTableWidget.EditTrigger.NoEditTriggers
         )
-        self.ing_table.setShowGrid(False)
+
+        table_wrapper = QFrame()
+        table_wrapper.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLORS['bg_secondary']};
+                border-radius: 16px;
+                border: 1px solid {COLORS['border']};
+            }}
+        """)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(20)
+        shadow.setColor(QColor(0, 0, 0, 20))
+        shadow.setOffset(0, 4)
+        table_wrapper.setGraphicsEffect(shadow)
+        table_layout = QVBoxLayout(table_wrapper)
+        table_layout.setContentsMargins(0, 0, 0, 0)
+        table_layout.setSpacing(0)
+        table_layout.addWidget(self.ing_table)
 
         layout.addWidget(toolbar)
-        layout.addWidget(self.ing_table)
+        layout.addWidget(table_wrapper)
 
     def setup_transactions_tab(self):
         layout = QVBoxLayout(self.transactions_tab)
@@ -750,59 +752,69 @@ class InventoryWidget(QWidget):
             "QUANTITY", "UNIT COST",
             "REFERENCE", "PERFORMED BY"
         ])
-        self.tx_table.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {COLORS['bg_secondary']};
-                color: {COLORS['text_primary']};
-                border: none;
-                gridline-color: transparent;
-                font-family: Segoe UI;
-                font-size: 13px;
-                outline: none;
-            }}
-            QTableWidget::item {{
-                padding: 0px 12px;
-                border-bottom: 1px solid {COLORS['border']};
-            }}
-            QTableWidget::item:selected {{
-                background-color: {COLORS['accent_light']};
-                color: {COLORS['accent_text']};
-            }}
-            QHeaderView::section {{
-                background-color: {COLORS['bg_tertiary']};
-                color: {COLORS['text_secondary']};
-                padding: 12px;
-                border: none;
-                border-bottom: 2px solid {COLORS['border']};
-                font-weight: bold;
-                font-size: 11px;
-                font-family: Segoe UI;
-            }}
-            QScrollBar:vertical {{
-                background: {COLORS['bg_tertiary']};
-                width: 6px; border-radius: 3px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {COLORS['border_strong']};
-                border-radius: 3px;
-            }}
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {{ height: 0; }}
-        """)
+        self.tx_table.setStyleSheet(
+            table_stylesheet(
+                item_padding="0 12px",
+                header_padding="14px 16px",
+                header_font_size="12px"
+            )
+        )
 
-        self.tx_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
+        self.tx_table.setColumnWidth(0, 120)
+        self.tx_table.setColumnWidth(1, 240)
+        self.tx_table.setColumnWidth(2, 140)
+        self.tx_table.setColumnWidth(3, 150)
+        self.tx_table.setColumnWidth(4, 100)
+        self.tx_table.setColumnWidth(5, 140)
+        self.tx_table.setColumnWidth(6, 120)
+
+        header = self.tx_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
+        header.setStretchLastSection(False)
+        header.setDefaultAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
         )
-        self.tx_table.verticalHeader().setVisible(False)
-        self.tx_table.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
+        self.tx_table.horizontalHeaderItem(0).setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft |
+            Qt.AlignmentFlag.AlignVCenter
         )
+        self.tx_table.horizontalHeaderItem(1).setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+
+        configure_table(self.tx_table, row_height=48)
         self.tx_table.setEditTriggers(
             QTableWidget.EditTrigger.NoEditTriggers
         )
-        self.tx_table.setShowGrid(False)
 
-        layout.addWidget(self.tx_table)
+        table_wrapper = QFrame()
+        table_wrapper.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLORS['bg_secondary']};
+                border-radius: 16px;
+                border: 1px solid {COLORS['border']};
+            }}
+        """)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(20)
+        shadow.setColor(QColor(0, 0, 0, 20))
+        shadow.setOffset(0, 4)
+        table_wrapper.setGraphicsEffect(shadow)
+        table_layout = QVBoxLayout(table_wrapper)
+        table_layout.setContentsMargins(0, 0, 0, 0)
+        table_layout.setSpacing(0)
+        table_layout.addWidget(self.tx_table)
+
+        layout.addWidget(table_wrapper)
 
     def load_data(self):
         self.suppliers   = get_all_suppliers()
@@ -838,7 +850,7 @@ class InventoryWidget(QWidget):
         self.ing_table.setRowCount(len(items))
 
         for row_idx, item in enumerate(items):
-            self.ing_table.setRowHeight(row_idx, 52)
+            self.ing_table.setRowHeight(row_idx, 58)
 
             # ID
             id_item = QTableWidgetItem(str(item[0]))

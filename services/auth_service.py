@@ -41,11 +41,11 @@ def setup_admin_password():
 def authenticate_user(username, password):
     """
     Authenticate a user by username and password.
-    Returns user details if successful, None if failed.
+    Returns (user_details, error_message).
     """
     conn = create_connection()
     if not conn:
-        return None
+        return None, "Unable to connect to the database."
     try:
         cursor = conn.cursor()
         cursor.execute("""
@@ -58,15 +58,15 @@ def authenticate_user(username, password):
         row = cursor.fetchone()
 
         if not row:
-            return None
+            return None, "Invalid username or password."
 
         user_id, uname, full_name, password_hash, is_active, role_name = row
 
         if not is_active:
-            return None
+            return None, "Your account is inactive. Please contact an administrator."
 
         if not verify_password(password, password_hash):
-            return None
+            return None, "Invalid username or password."
 
         # Update last login
         cursor.execute(
@@ -80,11 +80,11 @@ def authenticate_user(username, password):
             "username":  uname,
             "full_name": full_name,
             "role":      role_name
-        }
+        }, None
 
     except Exception as e:
         print(f"Authentication error: {e}")
-        return None
+        return None, "An unexpected error occurred during login."
     finally:
         conn.close()
 

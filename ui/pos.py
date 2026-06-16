@@ -21,7 +21,8 @@ class MenuItemCard(QFrame):
         super().__init__(parent)
         self.item     = item
         self.on_click = on_click
-        self.setFixedSize(150, 100)
+        self.setMinimumSize(150, 100)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setStyleSheet(f"""
             QFrame {{
@@ -744,18 +745,23 @@ class POSWidget(QWidget):
         self.discount_spin.setValue(0)
         self.discount_spin.setSuffix("%")
         self.discount_spin.setFixedHeight(34)
-        self.discount_spin.setFixedWidth(80)
+        self.discount_spin.setFixedWidth(90)
         self.discount_spin.setStyleSheet(f"""
             QSpinBox {{
                 background-color: {COLORS['bg_tertiary']};
                 border: 1.5px solid {COLORS['border']};
                 border-radius: 6px;
-                padding: 0 8px;
+                padding: 0 4px;
                 color: {COLORS['text_primary']};
                 font-size: 13px;
                 font-family: Segoe UI;
             }}
             QSpinBox:focus {{ border-color: {COLORS['accent']}; }}
+            QSpinBox::up-button, QSpinBox::down-button {{
+                width: 0px;
+                height: 0px;
+                border: none;
+            }}
         """)
         self.discount_spin.valueChanged.connect(self.update_totals)
 
@@ -806,7 +812,24 @@ class POSWidget(QWidget):
         self.charge_btn = QPushButton("⚡  Charge Customer")
         self.charge_btn.setFixedHeight(48)
         self.charge_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.charge_btn.setStyleSheet(primary_button())
+        self.charge_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {COLORS['accent']};
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: bold;
+                font-family: Segoe UI;
+            }}
+            QPushButton:hover {{
+                background-color: {COLORS['accent_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {COLORS['border']};
+                color: {COLORS['text_muted']};
+            }}
+        """)
         self.charge_btn.setEnabled(False)
         self.charge_btn.clicked.connect(self.process_payment)
 
@@ -815,9 +838,9 @@ class POSWidget(QWidget):
         self.clear_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.clear_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['danger_light']};
+                background-color: white;
                 color: {COLORS['danger']};
-                border: none;
+                border: 1.5px solid {COLORS['danger']};
                 border-radius: 8px;
                 font-size: 13px;
                 font-weight: 600;
@@ -826,6 +849,10 @@ class POSWidget(QWidget):
             QPushButton:hover {{
                 background-color: {COLORS['danger']};
                 color: white;
+            }}
+            QPushButton:disabled {{
+                border-color: {COLORS['border']};
+                color: {COLORS['text_muted']};
             }}
         """)
         self.clear_btn.setEnabled(False)
@@ -837,8 +864,8 @@ class POSWidget(QWidget):
         right_layout.addWidget(self.customer_card)
         right_layout.addWidget(self.customer_input)
         right_layout.addWidget(div1)
-        right_layout.addWidget(self.cart_scroll)
-        right_layout.addWidget(self.empty_lbl)
+        right_layout.addWidget(self.cart_scroll, 1)
+        right_layout.addWidget(self.empty_lbl, 1)
         right_layout.addWidget(div2)
         right_layout.addLayout(disc_row)
         right_layout.addWidget(totals_frame)
@@ -943,6 +970,10 @@ class POSWidget(QWidget):
         for idx, item in enumerate(items):
             card = MenuItemCard(item, self.add_to_cart)
             self.menu_grid.addWidget(card, idx // cols, idx % cols)
+
+        for col in range(cols):
+            self.menu_grid.setColumnStretch(col, 1)
+            self.menu_grid.setColumnMinimumWidth(col, 150)
 
     def add_to_cart(self, item):
         for cart_item in self.cart:

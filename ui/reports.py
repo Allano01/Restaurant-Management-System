@@ -18,7 +18,10 @@ from services.reports_service import (
     get_staff_performance, get_low_stock_report,
     get_hourly_sales
 )
-from assets.styles import COLORS, primary_button, outline_button
+from assets.styles import (
+    COLORS, primary_button, outline_button,
+    table_stylesheet, configure_table
+)
 
 
 class ReportsWidget(QWidget):
@@ -34,8 +37,8 @@ class ReportsWidget(QWidget):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(32, 28, 32, 28)
-        layout.setSpacing(20)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(16)
 
         # ── Header ────────────────────────────────────────────
         header_row = QHBoxLayout()
@@ -117,10 +120,16 @@ class ReportsWidget(QWidget):
 
         # ── Summary cards ─────────────────────────────────────
         self.summary_row = QHBoxLayout()
-        self.summary_row.setSpacing(14)
+        self.summary_row.setSpacing(12)
+        self.summary_row.setContentsMargins(0, 0, 0, 0)
 
         # ── Tabs ──────────────────────────────────────────────
         self.tabs = QTabWidget()
+        self.tabs.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding
+        )
+        self.tabs.setMinimumHeight(400)
         self.tabs.setStyleSheet(f"""
             QTabWidget::pane {{
                 border: 1px solid {COLORS['border']};
@@ -150,54 +159,114 @@ class ReportsWidget(QWidget):
         """)
 
         # Tab 1 — Sales
+        sales_scroll = QScrollArea()
+        sales_scroll.setStyleSheet(f"""
+            QScrollArea {{ background-color: {COLORS['bg_secondary']}; }}
+            QScrollBar:vertical {{ width: 10px; }}
+            QScrollBar::handle:vertical {{ 
+                background-color: {COLORS['border']};
+                border-radius: 5px;
+            }}
+            QScrollBar::handle:vertical:hover {{ background-color: {COLORS['accent']}; }}
+        """)
+        sales_scroll.setWidgetResizable(True)
+        sales_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        sales_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.sales_tab = QWidget()
-        self.sales_tab.setStyleSheet(
-            f"background-color: {COLORS['bg_secondary']};"
-        )
+        self.sales_tab.setStyleSheet(f"background-color: {COLORS['bg_secondary']};")
         self.setup_sales_tab()
-        self.tabs.addTab(self.sales_tab, "💰  Sales")
+        sales_scroll.setWidget(self.sales_tab)
+        self.tabs.addTab(sales_scroll, "💰  Sales")
 
         # Tab 2 — Menu
+        menu_scroll = QScrollArea()
+        menu_scroll.setStyleSheet(f"""
+            QScrollArea {{ background-color: {COLORS['bg_secondary']}; }}
+            QScrollBar:vertical {{ width: 10px; }}
+            QScrollBar::handle:vertical {{ 
+                background-color: {COLORS['border']};
+                border-radius: 5px;
+            }}
+            QScrollBar::handle:vertical:hover {{ background-color: {COLORS['accent']}; }}
+        """)
+        menu_scroll.setWidgetResizable(True)
+        menu_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        menu_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.menu_tab = QWidget()
-        self.menu_tab.setStyleSheet(
-            f"background-color: {COLORS['bg_secondary']};"
-        )
+        self.menu_tab.setStyleSheet(f"background-color: {COLORS['bg_secondary']};")
         self.setup_menu_tab()
-        self.tabs.addTab(self.menu_tab, "🍽  Menu")
+        menu_scroll.setWidget(self.menu_tab)
+        self.tabs.addTab(menu_scroll, "🍽  Menu")
 
         # Tab 3 — Customers
+        cust_scroll = QScrollArea()
+        cust_scroll.setStyleSheet(f"""
+            QScrollArea {{ background-color: {COLORS['bg_secondary']}; }}
+            QScrollBar:vertical {{ width: 10px; }}
+            QScrollBar::handle:vertical {{ 
+                background-color: {COLORS['border']};
+                border-radius: 5px;
+            }}
+            QScrollBar::handle:vertical:hover {{ background-color: {COLORS['accent']}; }}
+        """)
+        cust_scroll.setWidgetResizable(True)
+        cust_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        cust_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.cust_tab = QWidget()
-        self.cust_tab.setStyleSheet(
-            f"background-color: {COLORS['bg_secondary']};"
-        )
+        self.cust_tab.setStyleSheet(f"background-color: {COLORS['bg_secondary']};")
         self.setup_customers_tab()
-        self.tabs.addTab(self.cust_tab, "👥  Customers")
+        cust_scroll.setWidget(self.cust_tab)
+        self.tabs.addTab(cust_scroll, "👥  Customers")
 
         # Tab 4 — Staff
+        staff_scroll = QScrollArea()
+        staff_scroll.setStyleSheet(f"""
+            QScrollArea {{ background-color: {COLORS['bg_secondary']}; }}
+            QScrollBar:vertical {{ width: 10px; }}
+            QScrollBar::handle:vertical {{ 
+                background-color: {COLORS['border']};
+                border-radius: 5px;
+            }}
+            QScrollBar::handle:vertical:hover {{ background-color: {COLORS['accent']}; }}
+        """)
+        staff_scroll.setWidgetResizable(True)
+        staff_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        staff_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.staff_tab = QWidget()
-        self.staff_tab.setStyleSheet(
-            f"background-color: {COLORS['bg_secondary']};"
-        )
+        self.staff_tab.setStyleSheet(f"background-color: {COLORS['bg_secondary']};")
         self.setup_staff_tab()
-        self.tabs.addTab(self.staff_tab, "👨‍💼  Staff")
+        staff_scroll.setWidget(self.staff_tab)
+        self.tabs.addTab(staff_scroll, "👨‍💼  Staff")
 
         # Tab 5 — Inventory
+        inv_scroll = QScrollArea()
+        inv_scroll.setStyleSheet(f"""
+            QScrollArea {{ background-color: {COLORS['bg_secondary']}; }}
+            QScrollBar:vertical {{ width: 10px; }}
+            QScrollBar::handle:vertical {{ 
+                background-color: {COLORS['border']};
+                border-radius: 5px;
+            }}
+            QScrollBar::handle:vertical:hover {{ background-color: {COLORS['accent']}; }}
+        """)
+        inv_scroll.setWidgetResizable(True)
+        inv_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        inv_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.inv_tab = QWidget()
-        self.inv_tab.setStyleSheet(
-            f"background-color: {COLORS['bg_secondary']};"
-        )
+        self.inv_tab.setStyleSheet(f"background-color: {COLORS['bg_secondary']};")
         self.setup_inventory_tab()
-        self.tabs.addTab(self.inv_tab, "📦  Inventory")
+        inv_scroll.setWidget(self.inv_tab)
+        self.tabs.addTab(inv_scroll, "📦  Inventory")
 
         layout.addLayout(header_row)
         layout.addLayout(self.summary_row)
-        layout.addWidget(self.tabs)
+        layout.addWidget(self.tabs, 1)  # Stretch factor = 1 to grow and fill space
 
     # ── Tab setup methods ─────────────────────────────────────
     def setup_sales_tab(self):
         layout = QVBoxLayout(self.sales_tab)
         layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(14)
+        layout.setSpacing(20)
 
         # Daily sales table
         lbl = QLabel("Daily Sales Breakdown")
@@ -207,6 +276,25 @@ class ReportsWidget(QWidget):
         self.daily_table = self.make_table(
             ["DATE", "ORDERS", "REVENUE"]
         )
+        self.set_header_alignment(
+            self.daily_table,
+            ["left", "center", "right"]
+        )
+        self.daily_table.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred
+        )
+        self.daily_table.setMaximumHeight(200)
+        self.daily_table.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.Stretch
+        )
+        self.daily_table.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeMode.Stretch
+        )
+        self.daily_table.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.ResizeMode.Stretch
+        )
+        self.daily_table.horizontalHeader().setStretchLastSection(False)
 
         # Payment method table
         lbl2 = QLabel("Sales by Payment Method")
@@ -216,6 +304,25 @@ class ReportsWidget(QWidget):
         self.payment_table = self.make_table(
             ["PAYMENT METHOD", "ORDERS", "REVENUE"]
         )
+        self.set_header_alignment(
+            self.payment_table,
+            ["left", "center", "right"]
+        )
+        self.payment_table.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred
+        )
+        self.payment_table.setMaximumHeight(200)
+        self.payment_table.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.Stretch
+        )
+        self.payment_table.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeMode.Stretch
+        )
+        self.payment_table.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.ResizeMode.Stretch
+        )
+        self.payment_table.horizontalHeader().setStretchLastSection(False)
 
         # Hourly sales table
         lbl3 = QLabel("Today's Hourly Sales")
@@ -225,6 +332,25 @@ class ReportsWidget(QWidget):
         self.hourly_table = self.make_table(
             ["HOUR", "ORDERS", "REVENUE"]
         )
+        self.set_header_alignment(
+            self.hourly_table,
+            ["left", "center", "right"]
+        )
+        self.hourly_table.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred
+        )
+        self.hourly_table.setMaximumHeight(200)
+        self.hourly_table.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.Stretch
+        )
+        self.hourly_table.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeMode.Stretch
+        )
+        self.hourly_table.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.ResizeMode.Stretch
+        )
+        self.hourly_table.horizontalHeader().setStretchLastSection(False)
 
         layout.addWidget(lbl)
         layout.addWidget(self.daily_table)
@@ -235,8 +361,8 @@ class ReportsWidget(QWidget):
 
     def setup_menu_tab(self):
         layout = QVBoxLayout(self.menu_tab)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(14)
+        layout.setContentsMargins(20, 20, 20, 24)
+        layout.setSpacing(18)
 
         lbl = QLabel("Top Selling Items")
         lbl.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
@@ -244,6 +370,23 @@ class ReportsWidget(QWidget):
 
         self.items_table = self.make_table(
             ["RANK", "ITEM NAME", "QTY SOLD", "REVENUE"]
+        )
+        self.set_header_alignment(
+            self.items_table,
+            ["left", "left", "center", "right"]
+        )
+        self.apply_sales_table_style(
+            self.items_table,
+            [
+                QHeaderView.ResizeMode.Stretch,
+                QHeaderView.ResizeMode.Stretch,
+                QHeaderView.ResizeMode.Stretch,
+                QHeaderView.ResizeMode.Stretch,
+            ]
+        )
+        self.items_table.setMinimumHeight(150)
+        self.items_table.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
 
         lbl2 = QLabel("Revenue by Category")
@@ -253,16 +396,37 @@ class ReportsWidget(QWidget):
         self.cat_table = self.make_table(
             ["CATEGORY", "QTY SOLD", "REVENUE", "SHARE %"]
         )
+        self.set_header_alignment(
+            self.cat_table,
+            ["left", "center", "right", "right"]
+        )
+        self.apply_sales_table_style(
+            self.cat_table,
+            [
+                QHeaderView.ResizeMode.Stretch,
+                QHeaderView.ResizeMode.Stretch,
+                QHeaderView.ResizeMode.Stretch,
+                QHeaderView.ResizeMode.Stretch,
+            ]
+        )
+        self.cat_table.setMinimumHeight(150)
+        self.cat_table.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
 
         layout.addWidget(lbl)
         layout.addWidget(self.items_table)
+        layout.addSpacing(26)
         layout.addWidget(lbl2)
         layout.addWidget(self.cat_table)
+        layout.addStretch()
+
+        self.equalize_menu_table_columns()
 
     def setup_customers_tab(self):
         layout = QVBoxLayout(self.cust_tab)
         layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(14)
+        layout.setSpacing(20)
 
         lbl = QLabel("Top Customers by Spend")
         lbl.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
@@ -271,6 +435,12 @@ class ReportsWidget(QWidget):
         self.cust_table = self.make_table(
             ["RANK", "CUSTOMER", "ORDERS", "TOTAL SPENT", "AVG ORDER"]
         )
+        self.set_header_alignment(
+            self.cust_table,
+            ["left", "left", "center", "right", "right"]
+        )
+        self.apply_sales_table_style(self.cust_table)
+        self.cust_table.setMaximumHeight(300)
 
         layout.addWidget(lbl)
         layout.addWidget(self.cust_table)
@@ -278,7 +448,7 @@ class ReportsWidget(QWidget):
     def setup_staff_tab(self):
         layout = QVBoxLayout(self.staff_tab)
         layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(14)
+        layout.setSpacing(20)
 
         lbl = QLabel("Staff Sales Performance")
         lbl.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
@@ -287,6 +457,12 @@ class ReportsWidget(QWidget):
         self.staff_table = self.make_table(
             ["STAFF NAME", "ORDERS", "REVENUE", "AVG ORDER"]
         )
+        self.set_header_alignment(
+            self.staff_table,
+            ["left", "center", "right", "right"]
+        )
+        self.apply_sales_table_style(self.staff_table)
+        self.staff_table.setMaximumHeight(300)
 
         layout.addWidget(lbl)
         layout.addWidget(self.staff_table)
@@ -294,7 +470,7 @@ class ReportsWidget(QWidget):
     def setup_inventory_tab(self):
         layout = QVBoxLayout(self.inv_tab)
         layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(14)
+        layout.setSpacing(20)
 
         lbl = QLabel("Low Stock & Reorder Alerts")
         lbl.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
@@ -305,6 +481,13 @@ class ReportsWidget(QWidget):
             "MINIMUM", "UNIT COST",
             "VALUE", "SUPPLIER", "ALERT"
         ])
+        self.set_header_alignment(
+            self.low_stock_table,
+            ["left", "center", "center", "center",
+             "right", "right", "left", "center"]
+        )
+        self.apply_sales_table_style(self.low_stock_table)
+        self.low_stock_table.setMaximumHeight(350)
 
         layout.addWidget(lbl)
         layout.addWidget(self.low_stock_table)
@@ -372,15 +555,19 @@ class ReportsWidget(QWidget):
                 if hasattr(row[0], 'strftime')
                 else str(row[0])
             )
-            self.set_cell(self.daily_table, idx, 0, date_str)
+            self.set_cell(
+                self.daily_table, idx, 0,
+                date_str, align="left"
+            )
             self.set_cell(
                 self.daily_table, idx, 1, str(row[1]),
-                align=True
+                align="center"
             )
             self.set_cell(
                 self.daily_table, idx, 2,
                 f"${float(row[2]):.2f}",
-                bold=True, color=COLORS['accent']
+                bold=True, align="right",
+                color=COLORS['accent']
             )
 
         # Payment methods
@@ -389,16 +576,18 @@ class ReportsWidget(QWidget):
         for idx, row in enumerate(payments):
             self.payment_table.setRowHeight(idx, 44)
             self.set_cell(
-                self.payment_table, idx, 0, row[0], bold=True
+                self.payment_table, idx, 0,
+                row[0], bold=True, align="left"
             )
             self.set_cell(
                 self.payment_table, idx, 1, str(row[1]),
-                align=True
+                align="center"
             )
             self.set_cell(
                 self.payment_table, idx, 2,
                 f"${float(row[2]):.2f}",
-                bold=True, color=COLORS['accent']
+                bold=True, align="right",
+                color=COLORS['accent']
             )
 
         # Hourly sales
@@ -411,16 +600,17 @@ class ReportsWidget(QWidget):
             hour_12  = hour % 12 or 12
             self.set_cell(
                 self.hourly_table, idx, 0,
-                f"{hour_12}:00 {suffix}", align=True
+                f"{hour_12}:00 {suffix}", align="left"
             )
             self.set_cell(
                 self.hourly_table, idx, 1, str(row[1]),
-                align=True
+                align="center"
             )
             self.set_cell(
                 self.hourly_table, idx, 2,
                 f"${float(row[2]):.2f}",
-                bold=True, color=COLORS['accent']
+                bold=True, align="right",
+                color=COLORS['accent']
             )
 
     def load_menu_tab(self):
@@ -433,12 +623,12 @@ class ReportsWidget(QWidget):
             self.items_table.setRowHeight(idx, 44)
             self.set_cell(
                 self.items_table, idx, 0,
-                f"#{idx+1}", align=True,
+                f"#{idx+1}", align="left",
                 color=COLORS['accent']
             )
             self.set_cell(
                 self.items_table, idx, 1,
-                row[0], bold=True
+                row[0], bold=True, align="left"
             )
             self.set_cell(
                 self.items_table, idx, 2,
@@ -447,8 +637,10 @@ class ReportsWidget(QWidget):
             self.set_cell(
                 self.items_table, idx, 3,
                 f"${float(row[2]):.2f}",
-                bold=True, color=COLORS['accent']
+                bold=True, align="right",
+                color=COLORS['accent']
             )
+        self.fit_table_to_rows(self.items_table)
 
         # Categories
         cats       = get_sales_by_category(self.period)
@@ -458,7 +650,8 @@ class ReportsWidget(QWidget):
             self.cat_table.setRowHeight(idx, 44)
             share = float(row[2]) / total_rev * 100
             self.set_cell(
-                self.cat_table, idx, 0, row[0], bold=True
+                self.cat_table, idx, 0, row[0], bold=True,
+                align="left"
             )
             self.set_cell(
                 self.cat_table, idx, 1,
@@ -467,12 +660,16 @@ class ReportsWidget(QWidget):
             self.set_cell(
                 self.cat_table, idx, 2,
                 f"${float(row[2]):.2f}",
-                bold=True, color=COLORS['accent']
+                bold=True, align="right",
+                color=COLORS['accent']
             )
             self.set_cell(
                 self.cat_table, idx, 3,
-                f"{share:.1f}%", align=True
+                f"{share:.1f}%", align="right"
             )
+        self.fit_table_to_rows(self.cat_table)
+
+        self.equalize_menu_table_columns()
 
     def load_customers_tab(self):
         customers = get_top_customers(
@@ -486,26 +683,34 @@ class ReportsWidget(QWidget):
             avg_order = spent / orders if orders > 0 else 0
             self.set_cell(
                 self.cust_table, idx, 0,
-                f"#{idx+1}", align=True,
+                f"#{idx+1}", align="left",
                 color=COLORS['accent']
             )
             self.set_cell(
                 self.cust_table, idx, 1,
-                row[0], bold=True
+                row[0], bold=True, align="left"
             )
             self.set_cell(
                 self.cust_table, idx, 2,
-                str(orders), align=True
+                str(orders), align="center"
             )
             self.set_cell(
                 self.cust_table, idx, 3,
                 f"${spent:.2f}",
-                bold=True, color=COLORS['accent']
+                bold=True, align="right",
+                color=COLORS['accent']
             )
             self.set_cell(
                 self.cust_table, idx, 4,
-                f"${avg_order:.2f}", align=True
+                f"${avg_order:.2f}", align="right"
             )
+
+        self.cust_table.horizontalHeader().setStretchLastSection(False)
+        self.cust_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.cust_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.cust_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.cust_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        self.cust_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
 
     def load_staff_tab(self):
         staff = get_staff_performance(self.period)
@@ -514,20 +719,21 @@ class ReportsWidget(QWidget):
             self.staff_table.setRowHeight(idx, 44)
             self.set_cell(
                 self.staff_table, idx, 0,
-                row[0], bold=True
+                row[0], bold=True, align="left"
             )
             self.set_cell(
                 self.staff_table, idx, 1,
-                str(row[1]), align=True
+                str(row[1]), align="center"
             )
             self.set_cell(
                 self.staff_table, idx, 2,
                 f"${float(row[2]):.2f}",
-                bold=True, color=COLORS['accent']
+                bold=True, align="right",
+                color=COLORS['accent']
             )
             self.set_cell(
                 self.staff_table, idx, 3,
-                f"${float(row[3]):.2f}", align=True
+                f"${float(row[3]):.2f}", align="right"
             )
 
     def load_inventory_tab(self):
@@ -548,12 +754,13 @@ class ReportsWidget(QWidget):
                 color=COLORS['accent']
             )
             self.set_cell(
-                self.low_stock_table, idx, 1, row[1]
+                self.low_stock_table, idx, 1,
+                row[1], align="center"
             )
             self.set_cell(
                 self.low_stock_table, idx, 2,
                 f"{float(row[2]):.2f}",
-                bold=True,
+                bold=True, align="center",
                 color=(
                     COLORS['danger']
                     if float(row[2]) <= float(row[3])
@@ -562,19 +769,28 @@ class ReportsWidget(QWidget):
             )
             self.set_cell(
                 self.low_stock_table, idx, 3,
-                f"{float(row[3]):.2f}"
+                f"{float(row[3]):.2f}", align="center"
             )
             self.set_cell(
                 self.low_stock_table, idx, 4,
-                f"${float(row[5]):.2f}"
+                f"${float(row[5]):.2f}", align="right"
             )
             self.set_cell(
                 self.low_stock_table, idx, 5,
-                f"${float(row[6]):.2f}"
+                f"${float(row[6]):.2f}", align="right"
             )
             self.set_cell(
-                self.low_stock_table, idx, 6, row[7]
+                self.low_stock_table, idx, 6,
+                row[7], align="left"
             )
+            self.low_stock_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+            self.low_stock_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+            self.low_stock_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+            self.low_stock_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+            self.low_stock_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+            self.low_stock_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)
+            self.low_stock_table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.Stretch)
+            self.low_stock_table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.Stretch)
 
             # Alert badge
             alert      = row[8]
@@ -682,72 +898,129 @@ class ReportsWidget(QWidget):
         table = QTableWidget()
         table.setColumnCount(len(headers))
         table.setHorizontalHeaderLabels(headers)
-        table.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {COLORS['bg_secondary']};
-                color: {COLORS['text_primary']};
-                border: none;
-                gridline-color: transparent;
-                font-family: Segoe UI;
-                font-size: 13px;
-                outline: none;
-            }}
-            QTableWidget::item {{
-                padding: 0px 12px;
-                border-bottom: 1px solid {COLORS['border']};
-            }}
-            QTableWidget::item:selected {{
-                background-color: {COLORS['accent_light']};
-                color: {COLORS['accent_text']};
-            }}
-            QHeaderView::section {{
-                background-color: {COLORS['bg_tertiary']};
-                color: {COLORS['text_secondary']};
-                padding: 10px 12px;
-                border: none;
-                border-bottom: 2px solid {COLORS['border']};
-                font-weight: bold;
-                font-size: 11px;
-                font-family: Segoe UI;
-            }}
-            QScrollBar:vertical {{
-                background: {COLORS['bg_tertiary']};
-                width: 6px; border-radius: 3px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {COLORS['border_strong']};
-                border-radius: 3px;
-            }}
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {{ height: 0; }}
-        """)
-        table.horizontalHeader().setSectionResizeMode(
+        table.setStyleSheet(
+            table_stylesheet(header_padding="10px 12px")
+        )
+        header = table.horizontalHeader()
+        header.setDefaultAlignment(
+            Qt.AlignmentFlag.AlignCenter
+        )
+        header.setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
-        table.verticalHeader().setVisible(False)
+        header.setStretchLastSection(True)
+        configure_table(table, row_height=44)
         table.setEditTriggers(
             QTableWidget.EditTrigger.NoEditTriggers
         )
-        table.setShowGrid(False)
-        table.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
-        )
         return table
 
+    def set_header_alignment(self, table, alignments):
+        for idx, align in enumerate(alignments):
+            item = table.horizontalHeaderItem(idx)
+            if not item:
+                continue
+            if align == "left":
+                item.setTextAlignment(
+                    Qt.AlignmentFlag.AlignLeft |
+                    Qt.AlignmentFlag.AlignVCenter
+                )
+            elif align == "right":
+                item.setTextAlignment(
+                    Qt.AlignmentFlag.AlignRight |
+                    Qt.AlignmentFlag.AlignVCenter
+                )
+            else:
+                item.setTextAlignment(
+                    Qt.AlignmentFlag.AlignCenter |
+                    Qt.AlignmentFlag.AlignVCenter
+                )
+
+    def apply_sales_table_style(self, table, modes=None, widths=None):
+        table.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding
+        )
+        table.setMinimumWidth(0)
+        header = table.horizontalHeader()
+        if modes is None:
+            modes = [
+                QHeaderView.ResizeMode.Stretch
+                for _ in range(table.columnCount())
+            ]
+        for idx, mode in enumerate(modes):
+            header.setSectionResizeMode(idx, mode)
+        header.setStretchLastSection(False)
+        if widths:
+            for idx, width in enumerate(widths):
+                if width is not None and idx < table.columnCount():
+                    table.setColumnWidth(idx, width)
+
+    def set_table_column_layout(self, table, modes):
+        header = table.horizontalHeader()
+        for idx, mode in enumerate(modes):
+            header.setSectionResizeMode(idx, mode)
+        header.setStretchLastSection(False)
+
+    def equalize_menu_table_columns(self):
+        ratios = [0.16, 0.44, 0.20, 0.20]
+        for table in (self.items_table, self.cat_table):
+            if table.columnCount() != len(ratios):
+                continue
+            header = table.horizontalHeader()
+            header.setSectionResizeMode(
+                QHeaderView.ResizeMode.Interactive
+            )
+            header.setStretchLastSection(False)
+            available = table.viewport().width()
+            if available <= 0:
+                continue
+            widths = []
+            remaining = available
+            for ratio in ratios[:-1]:
+                w = max(80, int(available * ratio))
+                widths.append(w)
+                remaining -= w
+            widths.append(max(80, remaining))
+            for idx, width in enumerate(widths):
+                header.resizeSection(idx, width)
+            table.setHorizontalScrollBarPolicy(
+                Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+            )
+
+    def fit_table_to_rows(self, table, min_rows=2):
+        row_count = max(table.rowCount(), min_rows)
+        row_height = table.verticalHeader().defaultSectionSize()
+        header_height = table.horizontalHeader().height() or 46
+        frame_padding = 4
+        table.setFixedHeight(header_height + (row_count * row_height) + frame_padding)
+
     def set_cell(self, table, row, col, text,
-                 bold=False, align=False, color=None):
+                 bold=False, align=None, color=None):
         item = QTableWidgetItem(str(text))
         if bold:
             item.setFont(
                 QFont("Segoe UI", 12, QFont.Weight.Bold)
             )
-        if align:
+        if align is True or align == "center":
             item.setTextAlignment(
                 Qt.AlignmentFlag.AlignCenter
+            )
+        elif align == "right":
+            item.setTextAlignment(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
+        elif align == "left":
+            item.setTextAlignment(
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
             )
         if color:
             item.setForeground(QColor(color))
         table.setItem(row, col, item)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.equalize_menu_table_columns()
 
     def make_summary_card(self, title, value,
                           subtitle, color):

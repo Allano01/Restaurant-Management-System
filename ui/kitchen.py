@@ -457,8 +457,9 @@ class KitchenWidget(QWidget):
 
         # Empty state
         self.empty_lbl = QLabel(
-            "👨‍🍳\n\nNo active orders\nOrders will appear here"
+            "🍳\n\nNo active orders\nOrders will appear here"
         )
+        
         self.empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty_lbl.setFont(QFont("Segoe UI", 14))
         self.empty_lbl.setStyleSheet(

@@ -13,7 +13,7 @@ from services.admin_service import (
     toggle_user_status, get_all_settings,
     save_setting, get_audit_logs, backup_database
 )
-from assets.styles import COLORS, primary_button, outline_button
+from assets.styles import COLORS, primary_button, outline_button, table_stylesheet
 
 
 # ── User dialog ───────────────────────────────────────────────
@@ -459,54 +459,36 @@ class SettingsWidget(QWidget):
             "ID", "USERNAME", "FULL NAME",
             "ROLE", "STATUS", "LAST LOGIN", "ACTIONS"
         ])
-        self.users_table.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {COLORS['bg_secondary']};
-                color: {COLORS['text_primary']};
-                border: none;
-                gridline-color: transparent;
-                font-family: Segoe UI;
-                font-size: 13px;
-                outline: none;
-            }}
-            QTableWidget::item {{
-                padding: 0px 12px;
-                border-bottom: 1px solid {COLORS['border']};
-            }}
-            QTableWidget::item:selected {{
-                background-color: {COLORS['accent_light']};
-                color: {COLORS['accent_text']};
-            }}
-            QHeaderView::section {{
-                background-color: {COLORS['bg_tertiary']};
-                color: {COLORS['text_secondary']};
-                padding: 12px;
-                border: none;
-                border-bottom: 2px solid {COLORS['border']};
-                font-weight: bold;
-                font-size: 11px;
-                font-family: Segoe UI;
-            }}
-            QScrollBar:vertical {{
-                background: {COLORS['bg_tertiary']};
-                width: 6px; border-radius: 3px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {COLORS['border_strong']};
-                border-radius: 3px;
-            }}
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {{ height: 0; }}
-        """)
+        self.users_table.setStyleSheet(
+            table_stylesheet()
+        )
         self.users_table.setColumnWidth(0, 50)
-        self.users_table.setColumnWidth(4, 90)
-        self.users_table.setColumnWidth(5, 140)
-        self.users_table.setColumnWidth(6, 80)
+        self.users_table.setColumnWidth(4, 120)
+        self.users_table.setColumnWidth(5, 160)
+        self.users_table.setColumnWidth(6, 100)
+        for idx, alignment in enumerate([
+            Qt.AlignmentFlag.AlignCenter,
+            Qt.AlignmentFlag.AlignLeft,
+            Qt.AlignmentFlag.AlignLeft,
+            Qt.AlignmentFlag.AlignLeft,
+            Qt.AlignmentFlag.AlignCenter,
+            Qt.AlignmentFlag.AlignCenter,
+            Qt.AlignmentFlag.AlignCenter,
+        ]):
+            header_item = self.users_table.horizontalHeaderItem(idx)
+            if header_item:
+                header_item.setTextAlignment(alignment | Qt.AlignmentFlag.AlignVCenter)
         self.users_table.horizontalHeader().setSectionResizeMode(
             1, QHeaderView.ResizeMode.Stretch
         )
         self.users_table.horizontalHeader().setSectionResizeMode(
             2, QHeaderView.ResizeMode.Stretch
+        )
+        self.users_table.horizontalHeader().setSectionResizeMode(
+            3, QHeaderView.ResizeMode.Stretch
+        )
+        self.users_table.horizontalHeader().setSectionResizeMode(
+            6, QHeaderView.ResizeMode.Stretch
         )
         self.users_table.verticalHeader().setVisible(False)
         self.users_table.setEditTriggers(
@@ -521,9 +503,36 @@ class SettingsWidget(QWidget):
         layout.addWidget(self.users_table)
 
     def setup_settings_tab(self):
-        layout = QVBoxLayout(self.settings_tab)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(20)
+        from PyQt6.QtWidgets import QScrollArea
+
+        # Outer layout for the tab
+        outer_layout = QVBoxLayout(self.settings_tab)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        # Scroll area wrapper
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("""
+            QScrollArea { border: none; background: transparent; }
+            QScrollBar:vertical {
+                background: #f1f5f9; width: 6px; border-radius: 3px;
+            }
+            QScrollBar::handle:vertical {
+                background: #cbd5e1; border-radius: 3px;
+            }
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical { height: 0; }
+        """)
+
+        # Inner content widget
+        content = QWidget()
+        content.setStyleSheet(
+            f"background-color: {COLORS['bg_secondary']};"
+        )
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(28, 24, 28, 24)
+        content_layout.setSpacing(8)
 
         input_style = f"""
             QLineEdit {{
@@ -541,78 +550,125 @@ class SettingsWidget(QWidget):
             }}
         """
 
-        def section(title):
-            lbl = QLabel(title)
-            lbl.setFont(
-                QFont("Segoe UI", 13, QFont.Weight.Bold)
-            )
+        def section_header(title):
+            frame = QFrame()
+            frame.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {COLORS['bg_tertiary']};
+                    border-radius: 8px;
+                    border: none;
+                }}
+            """)
+            lbl = QLabel(f"  {title}")
+            lbl.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
             lbl.setStyleSheet(
-                f"color: {COLORS['text_primary']};"
+                f"color: {COLORS['text_primary']}; "
+                f"background: transparent; padding: 8px 0;"
             )
-            div = QFrame()
-            div.setFixedHeight(1)
-            div.setStyleSheet(
-                f"background: {COLORS['border']}; border: none;"
-            )
-            col = QVBoxLayout()
-            col.setSpacing(4)
-            col.addWidget(lbl)
-            col.addWidget(div)
-            return col
+            fl = QHBoxLayout(frame)
+            fl.setContentsMargins(12, 4, 12, 4)
+            fl.addWidget(lbl)
+            return frame
 
-        def field(label, key, placeholder=""):
-            row  = QHBoxLayout()
-            lbl  = QLabel(label)
-            lbl.setFixedWidth(200)
+        def field_row(label_text, key, placeholder="",
+                      read_only=False):
+            row = QHBoxLayout()
+            row.setSpacing(12)
+
+            lbl = QLabel(label_text)
+            lbl.setFixedWidth(180)
+            lbl.setFixedHeight(40)
             lbl.setFont(QFont("Segoe UI", 11))
             lbl.setStyleSheet(
-                f"color: {COLORS['text_secondary']};"
+                f"color: {COLORS['text_secondary']}; "
+                f"background: transparent;"
             )
-            inp  = QLineEdit()
+            lbl.setAlignment(
+                Qt.AlignmentFlag.AlignVCenter |
+                Qt.AlignmentFlag.AlignLeft
+            )
+
+            inp = QLineEdit()
             inp.setPlaceholderText(placeholder)
-            inp.setFixedHeight(38)
+            inp.setFixedHeight(40)
+            inp.setReadOnly(read_only)
             inp.setStyleSheet(input_style)
             inp.setObjectName(key)
+
             row.addWidget(lbl)
             row.addWidget(inp)
             return row, inp
 
-        # Restaurant section
-        layout.addLayout(section("🏢  Restaurant Information"))
         self.s_fields = {}
+
+        # ── Restaurant Information ────────────────────────────────
+        content_layout.addWidget(
+            section_header("🏢  Restaurant Information")
+        )
+        content_layout.addSpacing(4)
+
         for label, key, ph in [
-            ("Restaurant Name",    "restaurant_name",    "e.g. Quick Eats"),
-            ("Address",            "restaurant_address", "e.g. 123 Main Street"),
-            ("Phone",              "restaurant_phone",   "e.g. +254 700 000 000"),
-            ("Receipt Footer",     "receipt_footer",     "e.g. Thank you for dining with us!"),
+            ("Restaurant Name", "restaurant_name",
+             "e.g. Quick Eats"),
+            ("Address", "restaurant_address",
+             "e.g. 123 Main Street, Nairobi"),
+            ("Phone", "restaurant_phone",
+             "e.g. +254 700 000 000"),
+            ("Receipt Footer", "receipt_footer",
+             "e.g. Thank you for dining with us!"),
         ]:
-            row, inp = field(label, key, ph)
-            layout.addLayout(row)
+            row, inp = field_row(label, key, ph)
+            content_layout.addLayout(row)
             self.s_fields[key] = inp
 
-        layout.addLayout(section("💰  Financial Settings"))
+        content_layout.addSpacing(16)
+
+        # ── Financial Settings ────────────────────────────────────
+        content_layout.addWidget(
+            section_header("💰  Financial Settings")
+        )
+        content_layout.addSpacing(4)
+
         for label, key, ph in [
-            ("Currency Symbol", "currency", "e.g. $"),
-            ("Tax Rate (%)", "tax_rate", "e.g. 16"),
-            ("Loyalty Points Rate", "loyalty_points_per_dollar", "e.g. 1"),
+            ("Currency Symbol", "currency",
+             "e.g. $"),
+            ("Tax Rate (%)", "tax_rate",
+             "e.g. 16"),
+            ("Loyalty Points/Dollar",
+             "loyalty_points_per_dollar", "e.g. 1"),
         ]:
-            row, inp = field(label, key, ph)
-            layout.addLayout(row)
+            row, inp = field_row(label, key, ph)
+            content_layout.addLayout(row)
             self.s_fields[key] = inp
 
-        layout.addLayout(section("🎨  Branding"))
+        content_layout.addSpacing(16)
 
-        # Primary colour
+        # ── Branding ──────────────────────────────────────────────
+        content_layout.addWidget(
+            section_header("🎨  Branding & Appearance")
+        )
+        content_layout.addSpacing(4)
+
+        # Primary colour row
         color_row = QHBoxLayout()
+        color_row.setSpacing(12)
+
         color_lbl = QLabel("Primary Colour")
-        color_lbl.setFixedWidth(200)
+        color_lbl.setFixedWidth(180)
+        color_lbl.setFixedHeight(40)
         color_lbl.setFont(QFont("Segoe UI", 11))
         color_lbl.setStyleSheet(
-            f"color: {COLORS['text_secondary']};"
+            f"color: {COLORS['text_secondary']}; "
+            f"background: transparent;"
         )
+        color_lbl.setAlignment(
+            Qt.AlignmentFlag.AlignVCenter |
+            Qt.AlignmentFlag.AlignLeft
+        )
+
         self.color_input = QLineEdit()
         self.color_input.setPlaceholderText("e.g. #16a34a")
-        self.color_input.setFixedHeight(38)
+        self.color_input.setFixedHeight(40)
         self.color_input.setStyleSheet(input_style)
         self.color_input.setObjectName("primary_color")
         self.color_input.textChanged.connect(
@@ -621,47 +677,58 @@ class SettingsWidget(QWidget):
         self.s_fields["primary_color"] = self.color_input
 
         self.color_preview = QFrame()
-        self.color_preview.setFixedSize(38, 38)
+        self.color_preview.setFixedSize(40, 40)
         self.color_preview.setStyleSheet(f"""
             QFrame {{
                 background-color: {COLORS['accent']};
                 border-radius: 8px;
-                border: 1px solid {COLORS['border']};
+                border: 1.5px solid {COLORS['border']};
             }}
         """)
 
         color_row.addWidget(color_lbl)
         color_row.addWidget(self.color_input)
         color_row.addWidget(self.color_preview)
-        layout.addLayout(color_row)
+        content_layout.addLayout(color_row)
 
-        # Colour presets
+        # Colour presets row
         preset_row = QHBoxLayout()
-        preset_lbl = QLabel("Colour Presets")
-        preset_lbl.setFixedWidth(200)
+        preset_row.setSpacing(12)
+
+        preset_lbl = QLabel("Quick Presets")
+        preset_lbl.setFixedWidth(180)
         preset_lbl.setFont(QFont("Segoe UI", 11))
         preset_lbl.setStyleSheet(
-            f"color: {COLORS['text_secondary']};"
+            f"color: {COLORS['text_secondary']}; "
+            f"background: transparent;"
         )
-        preset_row.addWidget(preset_lbl)
 
-        presets = [
+        presets_frame = QFrame()
+        presets_frame.setStyleSheet(
+            "QFrame { background: transparent; border: none; }"
+        )
+        presets_inner = QHBoxLayout(presets_frame)
+        presets_inner.setContentsMargins(0, 0, 0, 0)
+        presets_inner.setSpacing(8)
+
+        for color, name in [
             ("#16a34a", "Green"),
             ("#2563eb", "Blue"),
             ("#dc2626", "Red"),
             ("#d97706", "Amber"),
             ("#7c3aed", "Purple"),
             ("#0f172a", "Dark"),
-        ]
-        for color, name in presets:
+            ("#e11d48", "Rose"),
+            ("#0891b2", "Cyan"),
+        ]:
             btn = QPushButton()
-            btn.setFixedSize(32, 32)
+            btn.setFixedSize(30, 30)
             btn.setToolTip(name)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: {color};
-                    border-radius: 16px;
+                    border-radius: 15px;
                     border: 2px solid transparent;
                 }}
                 QPushButton:hover {{
@@ -671,31 +738,57 @@ class SettingsWidget(QWidget):
             btn.clicked.connect(
                 lambda _, c=color: self.select_preset(c)
             )
-            preset_row.addWidget(btn)
+            presets_inner.addWidget(btn)
 
-        preset_row.addStretch()
-        layout.addLayout(preset_row)
+        presets_inner.addStretch()
+        preset_row.addWidget(preset_lbl)
+        preset_row.addWidget(presets_frame, 1)
+        content_layout.addLayout(preset_row)
 
-        # Logo upload
+        content_layout.addSpacing(4)
+
+        # Note about colour changes
+        note_lbl = QLabel(
+            "ℹ️  Colour changes take effect after restarting the app."
+        )
+        note_lbl.setFont(QFont("Segoe UI", 10))
+        note_lbl.setStyleSheet(
+            f"color: {COLORS['text_muted']}; "
+            f"background: transparent; padding-left: 192px;"
+        )
+        content_layout.addWidget(note_lbl)
+        content_layout.addSpacing(8)
+
+        # Logo upload row
         logo_row = QHBoxLayout()
+        logo_row.setSpacing(12)
+
         logo_lbl = QLabel("Restaurant Logo")
-        logo_lbl.setFixedWidth(200)
+        logo_lbl.setFixedWidth(180)
+        logo_lbl.setFixedHeight(40)
         logo_lbl.setFont(QFont("Segoe UI", 11))
         logo_lbl.setStyleSheet(
-            f"color: {COLORS['text_secondary']};"
+            f"color: {COLORS['text_secondary']}; "
+            f"background: transparent;"
         )
+        logo_lbl.setAlignment(
+            Qt.AlignmentFlag.AlignVCenter |
+            Qt.AlignmentFlag.AlignLeft
+        )
+
         self.logo_path_input = QLineEdit()
         self.logo_path_input.setPlaceholderText(
-            "Path to logo image file"
+            "Click Browse to select a logo image..."
         )
-        self.logo_path_input.setFixedHeight(38)
+        self.logo_path_input.setFixedHeight(40)
+        self.logo_path_input.setReadOnly(True)
         self.logo_path_input.setStyleSheet(input_style)
         self.logo_path_input.setObjectName("logo_path")
         self.s_fields["logo_path"] = self.logo_path_input
 
         browse_btn = QPushButton("📁  Browse")
-        browse_btn.setFixedHeight(38)
-        browse_btn.setFixedWidth(90)
+        browse_btn.setFixedHeight(40)
+        browse_btn.setFixedWidth(110)
         browse_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         browse_btn.setStyleSheet(outline_button())
         browse_btn.clicked.connect(self.browse_logo)
@@ -703,33 +796,41 @@ class SettingsWidget(QWidget):
         logo_row.addWidget(logo_lbl)
         logo_row.addWidget(self.logo_path_input)
         logo_row.addWidget(browse_btn)
-        layout.addLayout(logo_row)
+        content_layout.addLayout(logo_row)
 
         # Logo preview
         self.logo_preview = QLabel("No logo selected")
-        self.logo_preview.setFixedHeight(80)
+        self.logo_preview.setFixedHeight(90)
         self.logo_preview.setAlignment(
             Qt.AlignmentFlag.AlignCenter
         )
         self.logo_preview.setStyleSheet(f"""
             QLabel {{
                 background-color: {COLORS['bg_tertiary']};
-                border: 1px dashed {COLORS['border_strong']};
-                border-radius: 8px;
+                border: 2px dashed {COLORS['border_strong']};
+                border-radius: 10px;
                 color: {COLORS['text_muted']};
                 font-size: 12px;
+                font-family: Segoe UI;
+                margin-left: 192px;
             }}
         """)
-        layout.addWidget(self.logo_preview)
+        content_layout.addWidget(self.logo_preview)
 
+        content_layout.addSpacing(20)
+
+        # Save button
         save_btn = QPushButton("💾  Save All Settings")
-        save_btn.setFixedHeight(44)
-        save_btn.setFixedWidth(200)
+        save_btn.setFixedHeight(46)
+        save_btn.setFixedWidth(220)
         save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         save_btn.setStyleSheet(primary_button())
         save_btn.clicked.connect(self.save_settings)
-        layout.addWidget(save_btn)
-        layout.addStretch()
+        content_layout.addWidget(save_btn)
+        content_layout.addStretch()
+
+        scroll.setWidget(content)
+        outer_layout.addWidget(scroll)
 
     def setup_audit_tab(self):
         layout = QVBoxLayout(self.audit_tab)
@@ -742,41 +843,16 @@ class SettingsWidget(QWidget):
             "TIME", "USER", "ACTION",
             "TABLE", "RECORD ID"
         ])
-        self.audit_table.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {COLORS['bg_secondary']};
-                color: {COLORS['text_primary']};
-                border: none;
-                gridline-color: transparent;
-                font-family: Segoe UI;
-                font-size: 13px;
-                outline: none;
-            }}
-            QTableWidget::item {{
-                padding: 0px 12px;
-                border-bottom: 1px solid {COLORS['border']};
-            }}
-            QHeaderView::section {{
-                background-color: {COLORS['bg_tertiary']};
-                color: {COLORS['text_secondary']};
-                padding: 12px;
-                border: none;
-                border-bottom: 2px solid {COLORS['border']};
-                font-weight: bold;
-                font-size: 11px;
-                font-family: Segoe UI;
-            }}
-            QScrollBar:vertical {{
-                background: {COLORS['bg_tertiary']};
-                width: 6px; border-radius: 3px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {COLORS['border_strong']};
-                border-radius: 3px;
-            }}
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {{ height: 0; }}
-        """)
+        self.audit_table.setStyleSheet(
+            table_stylesheet()
+        )
+        for idx in range(self.audit_table.columnCount()):
+            header_item = self.audit_table.horizontalHeaderItem(idx)
+            if header_item:
+                header_item.setTextAlignment(
+                    Qt.AlignmentFlag.AlignCenter |
+                    Qt.AlignmentFlag.AlignVCenter
+                )
         self.audit_table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
@@ -869,12 +945,17 @@ class SettingsWidget(QWidget):
             uname_item.setForeground(QColor(COLORS['accent']))
             self.users_table.setItem(idx, 1, uname_item)
 
-            self.users_table.setItem(
-                idx, 2, QTableWidgetItem(u[2])
+            full_name_item = QTableWidgetItem(u[2])
+            full_name_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
             )
-            self.users_table.setItem(
-                idx, 3, QTableWidgetItem(u[7] or "—")
+            self.users_table.setItem(idx, 2, full_name_item)
+
+            role_item = QTableWidgetItem(u[7] or "—")
+            role_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
             )
+            self.users_table.setItem(idx, 3, role_item)
 
             # Status badge
             is_active    = u[4]
@@ -902,9 +983,11 @@ class SettingsWidget(QWidget):
             self.users_table.setCellWidget(idx, 4, badge_widget)
 
             last_login = str(u[5])[:16] if u[5] else "Never"
-            self.users_table.setItem(
-                idx, 5, QTableWidgetItem(last_login)
+            last_login_item = QTableWidgetItem(last_login)
+            last_login_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter
             )
+            self.users_table.setItem(idx, 5, last_login_item)
 
             dots_btn = QPushButton("⋮")
             dots_btn.setFixedSize(32, 32)
@@ -942,6 +1025,46 @@ class SettingsWidget(QWidget):
         for key, inp in self.s_fields.items():
             inp.setText(settings.get(key, ""))
 
+        # Load colour preview
+        color = settings.get("primary_color", "")
+        if color and color.startswith("#"):
+            self.color_preview.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {color};
+                    border-radius: 8px;
+                    border: 1.5px solid {COLORS['border']};
+                }}
+            """)
+
+        # Load logo preview
+        logo_path = settings.get("logo_path", "")
+        if logo_path:
+            self.logo_path_input.setText(logo_path)
+            self._show_logo_preview(logo_path)
+
+    def _show_logo_preview(self, path):
+        import os
+        from PyQt6.QtGui import QPixmap
+        if not path or not os.path.exists(path):
+            self.logo_preview.setText("⚠️  File not found")
+            return
+        try:
+            pixmap = QPixmap(path)
+            if not pixmap.isNull():
+                scaled = pixmap.scaled(
+                    220, 80,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+                self.logo_preview.setPixmap(scaled)
+                self.logo_preview.setText("")
+            else:
+                self.logo_preview.setText(
+                    "⚠️  Could not load image"
+                )
+        except Exception as e:
+            self.logo_preview.setText(f"Error: {e}")
+
     def load_audit_logs(self):
         logs = get_audit_logs(limit=100)
         self.audit_table.setRowCount(0)
@@ -954,6 +1077,10 @@ class SettingsWidget(QWidget):
             time_item.setForeground(
                 QColor(COLORS['text_muted'])
             )
+            time_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter |
+                Qt.AlignmentFlag.AlignVCenter
+            )
             self.audit_table.setItem(idx, 0, time_item)
 
             user_item = QTableWidgetItem(log[1])
@@ -961,11 +1088,19 @@ class SettingsWidget(QWidget):
                 QFont("Segoe UI", 11, QFont.Weight.Bold)
             )
             user_item.setForeground(QColor(COLORS['accent']))
+            user_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter |
+                Qt.AlignmentFlag.AlignVCenter
+            )
             self.audit_table.setItem(idx, 1, user_item)
 
             action_item = QTableWidgetItem(log[2])
             action_item.setForeground(
                 QColor(COLORS['text_primary'])
+            )
+            action_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter |
+                Qt.AlignmentFlag.AlignVCenter
             )
             self.audit_table.setItem(idx, 2, action_item)
 
@@ -973,11 +1108,19 @@ class SettingsWidget(QWidget):
                 idx, 3,
                 QTableWidgetItem(log[3] or "—")
             )
+            self.audit_table.item(idx, 3).setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter |
+                Qt.AlignmentFlag.AlignVCenter
+            )
             self.audit_table.setItem(
                 idx, 4,
                 QTableWidgetItem(
                     str(log[4]) if log[4] else "—"
                 )
+            )
+            self.audit_table.item(idx, 4).setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter |
+                Qt.AlignmentFlag.AlignVCenter
             )
 
     # ── Actions ───────────────────────────────────────────────
@@ -1094,11 +1237,23 @@ class SettingsWidget(QWidget):
     def save_settings(self):
         for key, inp in self.s_fields.items():
             save_setting(key, inp.text().strip())
-        QMessageBox.information(
-            self, "Saved",
-            "All settings saved successfully.\n"
-            "Some changes take effect on next login."
+
+        reply = QMessageBox.question(
+            self,
+            "Settings Saved",
+            "✅  All settings saved successfully.\n\n"
+            "The app needs to restart to apply colour and "
+            "logo changes.\n\n"
+            "Restart now?",
+            QMessageBox.StandardButton.Yes |
+            QMessageBox.StandardButton.No
         )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            import subprocess
+            import sys
+            subprocess.Popen([sys.executable] + sys.argv)
+            QApplication.quit()
 
     def preview_colour(self, color):
         if len(color) == 7 and color.startswith("#"):
@@ -1118,25 +1273,11 @@ class SettingsWidget(QWidget):
         path = QFileDialog.getOpenFileName(
             self, "Select Logo Image",
             "",
-            "Image Files (*.png *.jpg *.jpeg *.svg)"
+            "Image Files (*.png *.jpg *.jpeg *.bmp *.gif)"
         )[0]
         if path:
             self.logo_path_input.setText(path)
-            # Show preview
-            from PyQt6.QtGui import QPixmap
-            pixmap = QPixmap(path)
-            if not pixmap.isNull():
-                scaled = pixmap.scaled(
-                    200, 70,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
-                )
-                self.logo_preview.setPixmap(scaled)
-                self.logo_preview.setText("")
-            else:
-                self.logo_preview.setText(
-                    "Could not load image"
-                )
+            self._show_logo_preview(path)
 
     def do_backup(self):
         path = QFileDialog.getSaveFileName(

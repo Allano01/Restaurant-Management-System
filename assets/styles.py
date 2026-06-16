@@ -81,30 +81,36 @@ def app_stylesheet():
             background-color: {c['bg_secondary']};
             color: {c['text_primary']};
             border: none;
-            gridline-color: {c['border']};
+            gridline-color: transparent;
             font-family: {FONT_FAMILY};
             font-size: 13px;
             outline: none;
+            alternate-background-color: #fbfdff;
+            selection-background-color: {c['accent_light']};
+            selection-color: {c['accent_text']};
         }}
         QTableWidget::item {{
-            padding: 12px 14px;
+            padding: 0 14px;
             border-bottom: 1px solid {c['border']};
             color: {c['text_primary']};
+        }}
+        QTableWidget::item:hover {{
+            background-color: #f8fafc;
         }}
         QTableWidget::item:selected {{
             background-color: {c['accent_light']};
             color: {c['accent_text']};
         }}
         QHeaderView::section {{
-            background-color: {c['bg_tertiary']};
+            background-color: #f8fafc;
             color: {c['text_secondary']};
             padding: 12px 14px;
             border: none;
-            border-bottom: 2px solid {c['border']};
-            font-weight: bold;
+            border-right: 1px solid {c['border']};
+            border-bottom: 1px solid {c['border_strong']};
+            font-weight: 700;
             font-size: 11px;
             font-family: {FONT_FAMILY};
-            letter-spacing: 0.5px;
         }}
         QScrollBar:vertical {{
             background: {c['bg_tertiary']};
@@ -145,6 +151,107 @@ def app_stylesheet():
             background-color: {c['bg_secondary']};
         }}
     """
+
+
+def table_stylesheet(
+    background_color=None,
+    header_background=None,
+    header_color=None,
+    item_padding="0 14px",
+    font_size="13px",
+    border="none",
+    border_radius="0",
+    header_padding="12px 14px",
+    header_font_size="11px",
+    row_hover=True,
+):
+    c = COLORS
+    hover_css = """
+        QTableWidget::item:hover {
+            background-color: #f8fafc;
+        }
+    """ if row_hover else ""
+
+    return f"""
+        QTableWidget {{
+            background-color: {background_color or c['bg_secondary']};
+            color: {c['text_primary']};
+            border: {border};
+            border-radius: {border_radius};
+            gridline-color: transparent;
+            font-family: {FONT_FAMILY};
+            font-size: {font_size};
+            outline: none;
+            alternate-background-color: #fbfdff;
+            selection-background-color: {c['accent_light']};
+            selection-color: {c['accent_text']};
+        }}
+        QTableWidget::item {{
+            padding: {item_padding};
+            border-bottom: 1px solid {c['border']};
+            color: {c['text_primary']};
+        }}
+        QTableWidget::item:selected {{
+            background-color: {c['accent_light']};
+            color: {c['accent_text']};
+        }}
+        {hover_css}
+        QHeaderView::section {{
+            background-color: {header_background or '#f8fafc'};
+            color: {header_color or c['text_secondary']};
+            padding: {header_padding};
+            border: none;
+            border-right: 1px solid {c['border']};
+            border-bottom: 1px solid {c['border_strong']};
+            font-weight: 700;
+            font-size: {header_font_size};
+            font-family: {FONT_FAMILY};
+        }}
+        QScrollBar:vertical {{
+            background: {c['bg_tertiary']};
+            width: 8px;
+            border-radius: 4px;
+            margin: 0;
+        }}
+        QScrollBar::handle:vertical {{
+            background: {c['border_strong']};
+            border-radius: 4px;
+            min-height: 30px;
+        }}
+        QScrollBar::handle:vertical:hover {{
+            background: {c['text_muted']};
+        }}
+        QScrollBar::add-line:vertical,
+        QScrollBar::sub-line:vertical {{ height: 0px; }}
+        QScrollBar:horizontal {{
+            background: {c['bg_tertiary']};
+            height: 8px;
+            border-radius: 4px;
+        }}
+        QScrollBar::handle:horizontal {{
+            background: {c['border_strong']};
+            border-radius: 4px;
+        }}
+        QScrollBar::handle:horizontal:hover {{
+            background: {c['text_muted']};
+        }}
+    """
+
+
+def configure_table(table, row_height=48, alternating=True):
+    """Apply shared table behavior that cannot be expressed in Qt CSS."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtWidgets import QAbstractItemView
+
+    table.verticalHeader().setVisible(False)
+    table.verticalHeader().setDefaultSectionSize(row_height)
+    table.horizontalHeader().setHighlightSections(False)
+    table.setAlternatingRowColors(alternating)
+    table.setShowGrid(False)
+    table.setWordWrap(False)
+    table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+    table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+    table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
 
 
 def primary_button(color=None, text_color="white"):

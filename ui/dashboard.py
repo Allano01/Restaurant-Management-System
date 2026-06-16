@@ -466,26 +466,58 @@ class DashboardWindow(QMainWindow):
         """)
         logo_inner = QVBoxLayout(logo_frame)
         logo_inner.setContentsMargins(0, 0, 0, 0)
-        logo_icon = QLabel("🍽")
-        logo_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        logo_icon.setFont(QFont("Segoe UI", 16))
-        logo_icon.setStyleSheet("background: transparent; border: none;")
+        try:
+            from services.admin_service import get_all_settings as _gs2
+            import os
+            from PyQt6.QtGui import QPixmap
+            _logo_path = _gs2().get("logo_path", "")
+            if _logo_path and os.path.exists(_logo_path):
+                _pixmap = QPixmap(_logo_path)
+                if not _pixmap.isNull():
+                    _scaled = _pixmap.scaled(
+                        28, 28,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation
+                    )
+                    logo_icon = QLabel()
+                    logo_icon.setPixmap(_scaled)
+                    logo_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                    logo_icon.setStyleSheet(
+                        "background: transparent; border: none;"
+                    )
+                else:
+                    raise Exception("Invalid image")
+            else:
+                raise Exception("No logo")
+        except Exception:
+            logo_icon = QLabel("🍽")
+            logo_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            logo_icon.setFont(QFont("Segoe UI", 16))
+            logo_icon.setStyleSheet(
+                "background: transparent; border: none;"
+            )
         logo_inner.addWidget(logo_icon)
 
         brand_text = QVBoxLayout()
         brand_text.setSpacing(0)
-        b_name = QLabel("RestaurantPro")
-        b_name.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
-        b_name.setStyleSheet(f"color: {COLORS['text_primary']}; background: transparent; border: none;")
-        b_ver = QLabel("Enterprise v1.0")
-        b_ver.setFont(QFont("Segoe UI", 9))
-        b_ver.setStyleSheet(f"color: {COLORS['text_muted']}; background: transparent; border: none;")
-        brand_text.addWidget(b_name)
-        brand_text.addWidget(b_ver)
+        from services.admin_service import get_all_settings as _get_settings
+        try:
+            _rest_name = _get_settings().get("restaurant_name", "RestaurantPro")
+        except Exception:
+            _rest_name = "RestaurantPro"
 
-        brand_layout.addWidget(logo_frame)
-        brand_layout.addLayout(brand_text)
-        sidebar_layout.addWidget(brand)
+        brand_name = QLabel(_rest_name)
+        brand_name.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
+        brand_name.setStyleSheet(
+            f"color: {COLORS['text_primary']}; background: transparent; border: none;"
+        )
+        brand_ver = QLabel("Enterprise v1.0")
+        brand_ver.setFont(QFont("Segoe UI", 9))
+        brand_ver.setStyleSheet(
+            f"color: {COLORS['text_muted']}; background: transparent; border: none;"
+        )
+        brand_text.addWidget(brand_name)
+        brand_text.addWidget(brand_ver)
 
         # Nav section helper
         def nav_section(label):
@@ -501,8 +533,10 @@ class DashboardWindow(QMainWindow):
 
         self.nav_buttons = []
 
+        sidebar_layout.addWidget(nav_section("MAIN"))
+
         def add_nav(icon, label, index):
-            btn = QPushButton(f"  {icon}   {label}")
+            btn = QPushButton(f"  {label}")
             btn.setFixedHeight(42)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setCheckable(True)
@@ -511,29 +545,26 @@ class DashboardWindow(QMainWindow):
             sidebar_layout.addWidget(btn)
             self.nav_buttons.append(btn)
 
-        sidebar_layout.addWidget(nav_section("MAIN"))
-        for icon, label, idx in [
-            ("🏠", "Dashboard",       0),
-            ("🍽", "Menu Management", 1),
-            ("🛒", "Point of Sale",   2),
-            ("🪑", "Table Manager",   3),
-            ("👨‍🍳", "Kitchen",         4),
-            ("📦", "Inventory", 5),
-            ("🏭", "Suppliers", 6),
-            ("👥", "Customers", 7),
-            ("📅", "Reservations", 8),
-            ("📊", "Reports", 9),
-            ("⚙️", "Settings", 10),
+        for label, index in [
+            ("Dashboard", 0),
+            ("Menu Management", 1),
+            ("Point of Sale", 2),
+            ("Table Manager", 3),
+            ("Kitchen", 4),
+            ("Inventory", 5),
+            ("Suppliers", 6),
+            ("Customers", 7),
+            ("Reservations", 8),
         ]:
-            add_nav(icon, label, idx)
+            add_nav("", label, index)
 
         sidebar_layout.addWidget(nav_section("MANAGEMENT"))
-        for icon, label, idx in [
-            ("📊", "Reports", 9),
-            ("⚙️", "Settings", 10),
-        ]:
-            add_nav(icon, label, idx)
 
+        for label, idx in [
+            ("Reports", 9),
+            ("Settings", 10),
+        ]:
+            add_nav("", label, idx)
         sidebar_layout.addStretch()
 
         # Profile at bottom

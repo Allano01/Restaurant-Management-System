@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QDialog, QFormLayout,
     QLineEdit, QComboBox, QMessageBox, QHeaderView, QFrame,
-    QGraphicsDropShadowEffect, QMenu, QAbstractItemView
+    QGraphicsDropShadowEffect, QMenu
 )
 from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QFont, QColor, QCursor
@@ -10,7 +10,10 @@ from services.menu_service import (
     get_all_menu_items, get_all_categories, add_menu_item,
     update_menu_item, delete_menu_item, toggle_item_availability
 )
-from assets.styles import COLORS, primary_button, outline_button
+from assets.styles import (
+    COLORS, primary_button, outline_button,
+    table_stylesheet, configure_table
+)
 
 
 class MenuItemDialog(QDialog):
@@ -263,7 +266,12 @@ class MenuManagementWidget(QWidget):
         toolbar_layout.setSpacing(8)
 
         # Export buttons like sample
-        for label in ["CSV", "XLS", "PDF", "Print"]:
+        for label, callback in [
+            ("CSV", self.export_csv),
+            ("XLS", self.export_csv),
+            ("PDF", self.print_data),
+            ("Print", self.print_data),
+        ]:
             btn = QPushButton(label)
             btn.setFixedHeight(30)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -284,6 +292,7 @@ class MenuManagementWidget(QWidget):
                     border-color: {COLORS['accent']};
                 }}
             """)
+            btn.clicked.connect(callback)
             toolbar_layout.addWidget(btn)
 
         toolbar_layout.addStretch()
@@ -349,69 +358,68 @@ class MenuManagementWidget(QWidget):
             "Code", "Item Name", "Category",
             "Price", "Cost", "Status", "Actions"
         ])
-        self.table.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {COLORS['bg_secondary']};
-                color: {COLORS['text_primary']};
-                border: none;
-                border-radius: 12px;
-                gridline-color: transparent;
-                font-family: Segoe UI;
-                font-size: 13px;
-                outline: none;
-            }}
-            QTableWidget::item {{
-                padding: 0px 14px;
-                border-bottom: 1px solid {COLORS['border']};
-                color: {COLORS['text_primary']};
-            }}
-            QTableWidget::item:selected {{
-                background-color: {COLORS['accent_light']};
-                color: {COLORS['accent_text']};
-            }}
-            QHeaderView::section {{
-                background-color: {COLORS['bg_tertiary']};
-                color: {COLORS['text_secondary']};
-                padding: 14px;
-                border: none;
-                border-bottom: 2px solid {COLORS['border']};
-                font-weight: bold;
-                font-size: 12px;
-                font-family: Segoe UI;
-            }}
-            QScrollBar:vertical {{
-                background: {COLORS['bg_tertiary']};
-                width: 6px;
-                border-radius: 3px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {COLORS['border_strong']};
-                border-radius: 3px;
-            }}
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {{ height: 0; }}
-        """)
-
-        self.table.setColumnWidth(0, 60)
-        self.table.setColumnWidth(3, 90)
-        self.table.setColumnWidth(4, 90)
-        self.table.setColumnWidth(5, 120)
-        self.table.setColumnWidth(6, 70)
+        self.table.setStyleSheet(
+            table_stylesheet(
+                item_padding="0 12px",
+                header_padding="14px 16px",
+                header_font_size="12px"
+            )
+        )
+        self.table.setColumnWidth(0, 90)   # Code
+        self.table.setColumnWidth(2, 180)  # Category
+        self.table.setColumnWidth(3, 120)  # Price
+        self.table.setColumnWidth(4, 120)  # Cost
+        self.table.setColumnWidth(5, 170)  # Status
+        self.table.setColumnWidth(6, 110)  # Actions
         self.table.horizontalHeader().setSectionResizeMode(
-            1, QHeaderView.ResizeMode.Stretch
+            QHeaderView.ResizeMode.Fixed
         )
-        self.table.horizontalHeader().setSectionResizeMode(
-            2, QHeaderView.ResizeMode.Stretch
-        )
-        self.table.verticalHeader().setVisible(False)
-        self.table.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
-        )
+        self.table.horizontalHeader().setStretchLastSection(False)
+        configure_table(self.table, row_height=58)
         self.table.setEditTriggers(
             QTableWidget.EditTrigger.NoEditTriggers
         )
-        self.table.setShowGrid(False)
-        self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+        header = self.table.horizontalHeader()
+
+        header.setStretchLastSection(False)
+
+        header.setSectionResizeMode(
+            0, QHeaderView.ResizeMode.Fixed
+        )  # Code
+
+        header.setSectionResizeMode(
+            1, QHeaderView.ResizeMode.Stretch
+        )  # Item Name
+
+        header.setSectionResizeMode(
+            2, QHeaderView.ResizeMode.Fixed
+        )  # Category
+
+        header.setSectionResizeMode(
+            3, QHeaderView.ResizeMode.Fixed
+        )  # Price
+
+        header.setSectionResizeMode(
+            4, QHeaderView.ResizeMode.Fixed
+        )  # Cost
+
+        header.setSectionResizeMode(
+            5, QHeaderView.ResizeMode.Fixed
+        )  # Status
+
+        header.setSectionResizeMode(
+            6, QHeaderView.ResizeMode.Fixed
+        )  # Actions
+
+        header.setDefaultAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.table.horizontalHeaderItem(1).setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft |
+            Qt.AlignmentFlag.AlignVCenter
+        )
 
         table_layout.addWidget(self.table)
 
@@ -488,96 +496,133 @@ class MenuManagementWidget(QWidget):
         self.table.setRowCount(len(items))
 
         for row_idx, item in enumerate(items):
-            self.table.setRowHeight(row_idx, 56)
+            self.table.setRowHeight(row_idx, 58)
 
-            # Code/ID
+            # Code
             id_item = QTableWidgetItem(str(item[0]))
-            id_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            id_item.setForeground(QColor(COLORS['text_muted']))
+            id_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter
+            )
+            id_item.setForeground(QColor("#9ca3af"))
+            id_item.setFont(QFont("Segoe UI", 12))
             self.table.setItem(row_idx, 0, id_item)
 
-            # Name — green like sample clickable link style
+            # Item Name — semi bold not extra bold
             name_item = QTableWidgetItem(item[1])
-            name_item.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
+            name_item.setFont(
+                QFont("Segoe UI", 13, QFont.Weight.DemiBold)
+            )
             name_item.setForeground(QColor(COLORS['accent']))
+            name_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignLeft |
+                Qt.AlignmentFlag.AlignVCenter
+            )
+
             self.table.setItem(row_idx, 1, name_item)
 
-            # Category
+            # Category — center aligned to match header
             cat_item = QTableWidgetItem(item[2])
-            cat_item.setForeground(QColor(COLORS['text_secondary']))
+            cat_item.setFont(QFont("Segoe UI", 12))
+            cat_item.setForeground(QColor("#6b7280"))
+            cat_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter
+            )
             self.table.setItem(row_idx, 2, cat_item)
 
-            # Price
+            # Price — right aligned, bold
             price_item = QTableWidgetItem(f"${item[3]:.2f}")
-            price_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            price_item.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
-            price_item.setForeground(QColor(COLORS['text_primary']))
+            price_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter
+            )
+            price_item.setFont(
+                QFont("Segoe UI", 13, QFont.Weight.Bold)
+            )
+            price_item.setForeground(
+                QColor(COLORS['text_primary'])
+            )
             self.table.setItem(row_idx, 3, price_item)
 
-            # Cost
-            cost_item = QTableWidgetItem(
-                f"${item[4]:.2f}" if item[4] else "—"
+            # Cost — right aligned, normal weight
+            cost_val  = f"${item[4]:.2f}" if item[4] else "—"
+            cost_item = QTableWidgetItem(cost_val)
+            cost_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter
             )
-            cost_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            cost_item.setForeground(QColor(COLORS['text_muted']))
+            cost_item.setFont(QFont("Segoe UI", 12))
+            cost_item.setForeground(QColor("#9ca3af"))
             self.table.setItem(row_idx, 4, cost_item)
 
             # Status badge
             badge_widget = QWidget()
             badge_widget.setStyleSheet("background: transparent;")
             badge_layout = QHBoxLayout(badge_widget)
-            badge_layout.setContentsMargins(8, 0, 8, 0)
-            badge_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-            badge = QLabel("Active" if item[6] else "Inactive")
+            badge_layout.setContentsMargins(6, 0, 6, 0)
+            badge_layout.setAlignment(
+                Qt.AlignmentFlag.AlignCenter
+            )
+            badge = QLabel(
+                "Active" if item[6] else "Inactive"
+            )
             badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
             badge.setFixedHeight(24)
-            badge.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
+            badge.setFont(
+                QFont("Segoe UI", 11, QFont.Weight.DemiBold)
+            )
             badge.setStyleSheet(f"""
-                color: {'#16a34a' if item[6] else '#dc2626'};
+                color: {'#15803d' if item[6] else '#dc2626'};
                 background-color: {'#dcfce7' if item[6] else '#fee2e2'};
                 border-radius: 10px;
                 padding: 0 12px;
                 border: none;
             """)
             badge_layout.addWidget(badge)
-            self.table.setCellWidget(row_idx, 5, badge_widget)
+            self.table.setCellWidget(
+                row_idx, 5, badge_widget
+            )
 
-            # Actions — three dot menu like sample
+            # Action button — compact
             action_widget = QWidget()
-            action_widget.setStyleSheet("background: transparent;")
+            action_widget.setStyleSheet(
+                "background: transparent;"
+            )
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(0, 0, 0, 0)
-            action_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            action_layout.setAlignment(
+                Qt.AlignmentFlag.AlignCenter
+            )
 
             dots_btn = QPushButton("⋮")
-            dots_btn.setFixedSize(32, 32)
-            dots_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            dots_btn.setFixedSize(28, 28)
+            dots_btn.setCursor(
+                Qt.CursorShape.PointingHandCursor
+            )
             dots_btn.setToolTip("Actions")
             dots_btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: transparent;
-                    color: {COLORS['text_secondary']};
-                    border: 1px solid {COLORS['border']};
+                    color: #9ca3af;
+                    border: 1px solid #e5e7eb;
                     border-radius: 6px;
-                    font-size: 18px;
+                    font-size: 16px;
                     font-weight: bold;
-                    padding-bottom: 4px;
+                    padding-bottom: 3px;
                 }}
                 QPushButton:hover {{
-                    background-color: {COLORS['bg_tertiary']};
-                    border-color: {COLORS['border_strong']};
-                    color: {COLORS['text_primary']};
+                    background-color: {COLORS['accent_light']};
+                    border-color: {COLORS['accent']};
+                    color: {COLORS['accent']};
                 }}
             """)
             dots_btn.clicked.connect(
-                lambda _, i=item, btn=dots_btn: self.show_action_menu(i, btn)
+                lambda _, i=item:
+                self.show_action_menu(i)
+            )
+            action_layout.addWidget(dots_btn)
+            self.table.setCellWidget(
+                row_idx, 6, action_widget
             )
 
-            action_layout.addWidget(dots_btn)
-            self.table.setCellWidget(row_idx, 6, action_widget)
-
-    def show_action_menu(self, item, button):
+    def show_action_menu(self, item, button=None):
         """Show dropdown action menu like sample 1."""
         menu = QMenu(self)
         menu.setStyleSheet(f"""
@@ -692,3 +737,71 @@ class MenuManagementWidget(QWidget):
                 QMessageBox.critical(
                     self, "Error", "Failed to delete item."
                 )
+
+    def export_csv(self):
+        import csv
+        from PyQt6.QtWidgets import QFileDialog
+        path = QFileDialog.getSaveFileName(
+            self, "Export Menu Items",
+            "menu_items.csv",
+            "CSV Files (*.csv)"
+        )[0]
+        if not path:
+            return
+        try:
+            with open(path, "w", newline="",
+                      encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    "ID", "Item Name", "Category",
+                    "Price", "Cost Price",
+                    "Description", "Status"
+                ])
+                for item in self.menu_items:
+                    writer.writerow([
+                        item[0], item[1], item[2],
+                        f"${item[3]:.2f}",
+                        f"${item[4]:.2f}" if item[4] else "",
+                        item[5] or "",
+                        "Active" if item[6] else "Inactive"
+                    ])
+            QMessageBox.information(
+                self, "Exported",
+                f"Menu items exported to:\n{path}"
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Export Error", str(e)
+            )
+
+    def print_data(self):
+        import tempfile
+        import subprocess
+        try:
+            tmp = tempfile.NamedTemporaryFile(
+                delete=False, suffix=".txt",
+                mode="w", encoding="utf-8"
+            )
+            tmp.write("MENU ITEMS\n")
+            tmp.write("=" * 60 + "\n")
+            tmp.write(
+                f"{'ID':<5} {'Item Name':<20} {'Category':<12} "
+                f"{'Price':<10} {'Status'}\n"
+            )
+            tmp.write("-" * 60 + "\n")
+            for item in self.menu_items:
+                tmp.write(
+                    f"{item[0]:<5} {item[1]:<20} {item[2]:<12} "
+                    f"${item[3]:<9.2f} "
+                    f"{'Active' if item[6] else 'Inactive'}\n"
+                )
+            tmp.write("=" * 60 + "\n")
+            tmp.write(f"Total Items: {len(self.menu_items)}\n")
+            tmp.close()
+            subprocess.run(
+                ["notepad.exe", "/p", tmp.name], check=True
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Print Error", str(e)
+            )

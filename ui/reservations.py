@@ -16,7 +16,7 @@ from services.reservation_service import (
 )
 from services.table_service import get_all_tables
 from services.customer_service import get_customer_by_phone
-from assets.styles import COLORS, primary_button, outline_button
+from assets.styles import COLORS, primary_button, outline_button, table_stylesheet
 
 
 # ── Status config ─────────────────────────────────────────────
@@ -385,89 +385,91 @@ class ReservationsWidget(QWidget):
         self.stats_row = QHBoxLayout()
         self.stats_row.setSpacing(12)
 
-        # ── View toggle + filter ──────────────────────────────
-        controls_row = QHBoxLayout()
-        controls_row.setSpacing(8)
+        # ── View toggle ───────────────────────────────────────
+        toggle_row = QHBoxLayout()
+        toggle_row.setSpacing(8)
 
-        # View mode buttons
         self.today_btn = QPushButton("📅  Today")
-        self.all_btn   = QPushButton("📋  All")
+        self.all_btn = QPushButton("📋  All Reservations")
 
         for btn, mode in [
             (self.today_btn, "today"),
-            (self.all_btn,   "all")
+            (self.all_btn, "all")
         ]:
             btn.setFixedHeight(34)
             btn.setCheckable(True)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setStyleSheet(f"""
-                QPushButton {{
-                    background-color: {COLORS['bg_secondary']};
-                    color: {COLORS['text_secondary']};
-                    border: 1.5px solid {COLORS['border']};
-                    border-radius: 8px;
-                    font-size: 12px;
-                    font-weight: 600;
-                    font-family: Segoe UI;
-                    padding: 0 16px;
-                }}
-                QPushButton:checked {{
-                    background-color: {COLORS['accent']};
-                    color: white;
-                    border-color: {COLORS['accent']};
-                }}
-                QPushButton:hover {{
-                    border-color: {COLORS['accent']};
-                }}
-            """)
+                        QPushButton {{
+                            background-color: {COLORS['bg_secondary']};
+                            color: {COLORS['text_secondary']};
+                            border: 1.5px solid {COLORS['border']};
+                            border-radius: 8px;
+                            font-size: 12px;
+                            font-weight: 600;
+                            font-family: Segoe UI;
+                            padding: 0 16px;
+                        }}
+                        QPushButton:checked {{
+                            background-color: {COLORS['accent']};
+                            color: white;
+                            border-color: {COLORS['accent']};
+                        }}
+                        QPushButton:hover {{
+                            border-color: {COLORS['accent']};
+                        }}
+                    """)
             btn.clicked.connect(
                 lambda _, m=mode: self.set_view_mode(m)
             )
 
         self.today_btn.setChecked(True)
-        controls_row.addWidget(self.today_btn)
-        controls_row.addWidget(self.all_btn)
-        controls_row.addSpacing(16)
+        toggle_row.addWidget(self.today_btn)
+        toggle_row.addWidget(self.all_btn)
+        toggle_row.addStretch()
 
-        # Status filters
+        # ── Status filter tabs ────────────────────────────────
+        filter_row = QHBoxLayout()
+        filter_row.setSpacing(8)
         self.filter_btns = {}
+
         for status in ["All", "Pending", "Confirmed",
                        "Seated", "Completed",
                        "Cancelled", "No Show"]:
             config = STATUS_CONFIG.get(status, {})
-            color  = config[0] if config else COLORS['text_secondary']
+            color = config[0] if config else COLORS['text_secondary']
 
             btn = QPushButton(status)
-            btn.setFixedHeight(34)
+            btn.setFixedHeight(30)
             btn.setCheckable(True)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setStyleSheet(f"""
-                QPushButton {{
-                    background-color: {COLORS['bg_secondary']};
-                    color: {COLORS['text_secondary']};
-                    border: 1.5px solid {COLORS['border']};
-                    border-radius: 17px;
-                    font-size: 12px;
-                    font-weight: 600;
-                    font-family: Segoe UI;
-                    padding: 0 14px;
-                }}
-                QPushButton:checked {{
-                    background-color: {color if status != 'All' else COLORS['accent']};
-                    color: white;
-                    border-color: {color if status != 'All' else COLORS['accent']};
-                }}
-                QPushButton:hover {{
-                    border-color: {color if status != 'All' else COLORS['accent']};
-                }}
-            """)
+                        QPushButton {{
+                            background-color: {COLORS['bg_secondary']};
+                            color: {COLORS['text_secondary']};
+                            border: 1.5px solid {COLORS['border']};
+                            border-radius: 15px;
+                            font-size: 11px;
+                            font-weight: 600;
+                            font-family: Segoe UI;
+                            padding: 0 12px;
+                        }}
+                        QPushButton:checked {{
+                            background-color: {color if status != 'All' else COLORS['accent']};
+                            color: white;
+                            border-color: {color if status != 'All' else COLORS['accent']};
+                        }}
+                        QPushButton:hover {{
+                            border-color: {color if status != 'All' else COLORS['accent']};
+                        }}
+                    """)
             btn.clicked.connect(
                 lambda _, s=status: self.set_filter(s)
             )
-            controls_row.addWidget(btn)
+            filter_row.addWidget(btn)
             self.filter_btns[status] = btn
 
-        controls_row.addStretch()
+        filter_row.addStretch()
         self.filter_btns["All"].setChecked(True)
 
         # ── Table ─────────────────────────────────────────────
@@ -478,57 +480,64 @@ class ReservationsWidget(QWidget):
             "GUESTS", "DATE", "TIME",
             "TABLE", "STATUS", "ACTIONS"
         ])
-        self.table.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {COLORS['bg_secondary']};
-                color: {COLORS['text_primary']};
-                border: none;
-                gridline-color: transparent;
-                font-family: Segoe UI;
-                font-size: 13px;
-                outline: none;
-            }}
-            QTableWidget::item {{
-                padding: 0px 12px;
-                border-bottom: 1px solid {COLORS['border']};
-            }}
-            QTableWidget::item:selected {{
-                background-color: {COLORS['accent_light']};
-                color: {COLORS['accent_text']};
-            }}
-            QHeaderView::section {{
-                background-color: {COLORS['bg_tertiary']};
-                color: {COLORS['text_secondary']};
-                padding: 12px;
-                border: none;
-                border-bottom: 2px solid {COLORS['border']};
-                font-weight: bold;
-                font-size: 11px;
-                font-family: Segoe UI;
-            }}
-            QScrollBar:vertical {{
-                background: {COLORS['bg_tertiary']};
-                width: 6px; border-radius: 3px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {COLORS['border_strong']};
-                border-radius: 3px;
-            }}
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {{ height: 0; }}
-        """)
+        self.table.setStyleSheet(
+            table_stylesheet()
+        )
 
         self.table.setColumnWidth(0, 50)
+        self.table.setColumnWidth(1, 200)
         self.table.setColumnWidth(2, 130)
         self.table.setColumnWidth(3, 70)
         self.table.setColumnWidth(4, 110)
         self.table.setColumnWidth(5, 90)
         self.table.setColumnWidth(6, 90)
-        self.table.setColumnWidth(7, 110)
-        self.table.setColumnWidth(8, 80)
-        self.table.horizontalHeader().setSectionResizeMode(
+        self.table.setColumnWidth(7, 130)
+        self.table.setColumnWidth(8, 100)
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(
             1, QHeaderView.ResizeMode.Stretch
         )
+        header.setSectionResizeMode(
+            2, QHeaderView.ResizeMode.Stretch
+        )
+        header.setDefaultAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.table.horizontalHeaderItem(1).setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.table.horizontalHeaderItem(2).setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.table.horizontalHeaderItem(3).setTextAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.table.horizontalHeaderItem(4).setTextAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.table.horizontalHeaderItem(5).setTextAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.table.horizontalHeaderItem(6).setTextAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.table.horizontalHeaderItem(7).setTextAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.table.horizontalHeaderItem(8).setTextAlignment(
+            Qt.AlignmentFlag.AlignCenter |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        header.setStretchLastSection(False)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows
@@ -543,7 +552,8 @@ class ReservationsWidget(QWidget):
 
         layout.addLayout(header_row)
         layout.addLayout(self.stats_row)
-        layout.addLayout(controls_row)
+        layout.addLayout(toggle_row)
+        layout.addLayout(filter_row)
         layout.addWidget(self.table)
 
     def load_data(self):
