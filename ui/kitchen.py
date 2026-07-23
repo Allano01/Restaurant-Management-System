@@ -1,7 +1,8 @@
 import datetime
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QScrollArea, QGraphicsDropShadowEffect, QMessageBox
+    QFrame, QScrollArea, QGraphicsDropShadowEffect, QMessageBox,
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QColor
@@ -10,7 +11,7 @@ from services.kitchen_service import (
     update_kitchen_order_status, update_priority,
     get_kitchen_stats
 )
-from assets.styles import COLORS, primary_button
+from assets.styles import COLORS, primary_button, table_stylesheet, configure_table
 
 
 # ── Status config ─────────────────────────────────────────────
@@ -455,6 +456,75 @@ class KitchenWidget(QWidget):
         self.orders_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.orders_scroll.setWidget(self.orders_widget)
 
+        # Served orders use the same framed table treatment as Menu Management.
+        self.served_table_wrapper = QFrame()
+        self.served_table_wrapper.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLORS['bg_secondary']};
+                border-radius: 12px;
+                border: 1px solid {COLORS['border']};
+            }}
+        """)
+        served_shadow = QGraphicsDropShadowEffect()
+        served_shadow.setBlurRadius(20)
+        served_shadow.setColor(QColor(0, 0, 0, 20))
+        served_shadow.setOffset(0, 4)
+        self.served_table_wrapper.setGraphicsEffect(served_shadow)
+
+        served_table_layout = QVBoxLayout(self.served_table_wrapper)
+        served_table_layout.setContentsMargins(0, 0, 0, 0)
+        served_table_layout.setSpacing(0)
+
+        self.served_table = QTableWidget()
+        self.served_table.setColumnCount(6)
+        self.served_table.setHorizontalHeaderLabels([
+            "Order #", "Table", "Customer", "Items", "Priority", "Served At"
+        ])
+        self.served_table.setStyleSheet(table_stylesheet(
+            item_padding="0 12px",
+            header_padding="14px 16px",
+            header_font_size="12px"
+        ))
+        self.served_table.setColumnWidth(0, 100)
+        self.served_table.setColumnWidth(1, 105)
+        self.served_table.setColumnWidth(4, 115)
+        # Keep enough room for the full YYYY-MM-DD HH:MM served timestamp.
+        self.served_table.setColumnWidth(5, 190)
+        self.served_table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
+        self.served_table.horizontalHeader().setStretchLastSection(False)
+        configure_table(self.served_table, row_height=58)
+        self.served_table.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers
+        )
+        self.served_table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.served_table.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection
+        )
+        self.served_table.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.ResizeMode.Stretch
+        )
+        self.served_table.horizontalHeader().setSectionResizeMode(
+            3, QHeaderView.ResizeMode.Stretch
+        )
+        self.served_table.horizontalHeader().setSectionResizeMode(
+            5, QHeaderView.ResizeMode.Fixed
+        )
+        self.served_table.horizontalHeader().setDefaultAlignment(
+            Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter
+        )
+        self.served_table.horizontalHeaderItem(2).setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
+        self.served_table.horizontalHeaderItem(3).setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
+        served_table_layout.addWidget(self.served_table)
+        self.served_table_wrapper.hide()
+
         # Empty state
         self.empty_lbl = QLabel(
             "🍳\n\nNo active orders\nOrders will appear here"
@@ -470,6 +540,7 @@ class KitchenWidget(QWidget):
         layout.addLayout(self.stats_row)
         layout.addLayout(filter_row)
         layout.addWidget(self.orders_scroll)
+        layout.addWidget(self.served_table_wrapper)
         layout.addWidget(self.empty_lbl)
 
     def load_orders(self):
@@ -508,15 +579,22 @@ class KitchenWidget(QWidget):
         if not orders:
             self.empty_lbl.show()
             self.orders_scroll.hide()
+            self.served_table_wrapper.hide()
         else:
             self.empty_lbl.hide()
-            self.orders_scroll.show()
-            for order in orders:
-                ticket = OrderTicket(
-                    order, self.handle_status_change
-                )
-                self.orders_layout.addWidget(ticket)
-            self.orders_layout.addStretch()
+            if self.active_filter == "Served":
+                self.orders_scroll.hide()
+                self.populate_served_orders(orders)
+                self.served_table_wrapper.show()
+            else:
+                self.served_table_wrapper.hide()
+                self.orders_scroll.show()
+                for order in orders:
+                    ticket = OrderTicket(
+                        order, self.handle_status_change
+                    )
+                    self.orders_layout.addWidget(ticket)
+                self.orders_layout.addStretch()
 
         now = datetime.datetime.now().strftime("%H:%M:%S")
         self.last_refresh_lbl.setText(f"Last updated: {now}")
@@ -526,6 +604,69 @@ class KitchenWidget(QWidget):
         for label, btn in self.filter_btns.items():
             btn.setChecked(label == f)
         self.load_orders()
+
+    def populate_served_orders(self, orders):
+        """Populate the completed-order table for the Served filter."""
+        self.served_table.setRowCount(0)
+        self.served_table.setRowCount(len(orders))
+
+        for row, order in enumerate(orders):
+            self.served_table.setRowHeight(row, 58)
+            items = get_kitchen_order_items(order[0])
+            item_text = ", ".join(
+                f"{item[2]}x {item[1]}" for item in items
+            ) or "—"
+            served_at = str(order[8])[:16] if order[8] else "—"
+            # Order number and table use the muted, centred metadata style.
+            for column, value in ((0, f"#{order[1]}"),
+                                  (1, f"Table {order[2]}" if order[2] else "—")):
+                item = QTableWidgetItem(value)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                item.setFont(QFont("Segoe UI", 12))
+                item.setForeground(QColor("#9ca3af"))
+                self.served_table.setItem(row, column, item)
+
+            customer = QTableWidgetItem(order[3] or "Walk-in")
+            customer.setFont(QFont("Segoe UI", 13, QFont.Weight.DemiBold))
+            customer.setForeground(QColor(COLORS['accent']))
+            customer.setTextAlignment(
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+            )
+            self.served_table.setItem(row, 2, customer)
+
+            items_cell = QTableWidgetItem(item_text)
+            items_cell.setFont(QFont("Segoe UI", 11))
+            items_cell.setForeground(QColor(COLORS['text_secondary']))
+            items_cell.setTextAlignment(
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+            )
+            self.served_table.setItem(row, 3, items_cell)
+
+            priority_widget = QWidget()
+            priority_widget.setStyleSheet("background: transparent;")
+            priority_layout = QHBoxLayout(priority_widget)
+            priority_layout.setContentsMargins(6, 0, 6, 0)
+            priority_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            priority_badge = QLabel(order[5] or "Normal")
+            priority_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            priority_badge.setFixedHeight(24)
+            priority_badge.setFont(QFont("Segoe UI", 11, QFont.Weight.DemiBold))
+            priority_badge.setStyleSheet("""
+                color: #6d28d9;
+                background-color: #ede9fe;
+                border-radius: 10px;
+                padding: 0 12px;
+                border: none;
+            """)
+            priority_layout.addWidget(priority_badge)
+            self.served_table.setCellWidget(row, 4, priority_widget)
+
+            served_item = QTableWidgetItem(served_at)
+            served_item.setToolTip(str(order[8]) if order[8] else "—")
+            served_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            served_item.setFont(QFont("Segoe UI", 12))
+            served_item.setForeground(QColor("#9ca3af"))
+            self.served_table.setItem(row, 5, served_item)
 
     def handle_status_change(self, kitchen_order_id,
                               new_status, priority=None):

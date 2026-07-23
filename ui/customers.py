@@ -14,6 +14,7 @@ from services.customer_service import (
     redeem_loyalty_points, get_customer_stats
 )
 from assets.styles import COLORS, primary_button, outline_button, table_stylesheet
+from services.settings_service import format_currency
 
 
 # ── Customer dialog ───────────────────────────────────────────
@@ -250,7 +251,7 @@ class CustomerDetailDialog(QDialog):
             ("Total Orders",
              str(self.customer[10]), COLORS['blue']),
             ("Total Spent",
-             f"${float(self.customer[11]):.2f}",
+             format_currency(self.customer[11]),
              COLORS['accent']),
             ("Loyalty Points",
              str(self.customer[8]), COLORS['warning']),
@@ -357,7 +358,7 @@ class CustomerDetailDialog(QDialog):
             )
             orders_table.setItem(
                 idx, 1,
-                QTableWidgetItem(f"${float(o[1]):.2f}")
+                QTableWidgetItem(format_currency(o[1]))
             )
             orders_table.setItem(
                 idx, 2, QTableWidgetItem(o[2])
@@ -859,7 +860,7 @@ class CustomerWidget(QWidget):
             self.table.setItem(idx, 3, orders_item)
 
             spent_item = QTableWidgetItem(
-                f"${float(c[11]):.2f}"
+                format_currency(c[11])
             )
             spent_item.setTextAlignment(
                 Qt.AlignmentFlag.AlignCenter

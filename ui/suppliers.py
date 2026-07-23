@@ -20,6 +20,7 @@ from assets.styles import (
     COLORS, primary_button, outline_button,
     table_stylesheet, configure_table
 )
+from services.settings_service import format_currency, get_active_currency_symbol
 
 
 # ── Status colours ────────────────────────────────────────────
@@ -334,7 +335,7 @@ class CreatePODialog(QDialog):
         self.cost_spin = QDoubleSpinBox()
         self.cost_spin.setRange(0, 99999)
         self.cost_spin.setDecimals(2)
-        self.cost_spin.setPrefix("$")
+        self.cost_spin.setPrefix(f"{get_active_currency_symbol()} ")
         self.cost_spin.setFixedHeight(36)
         self.cost_spin.setFixedWidth(100)
         self.cost_spin.setStyleSheet(input_style)
@@ -381,7 +382,7 @@ class CreatePODialog(QDialog):
         self.items_table.setShowGrid(False)
 
         # Total row
-        self.total_lbl = QLabel("Total:  $0.00")
+        self.total_lbl = QLabel(f"Total:  {format_currency(0)}")
         self.total_lbl.setFont(
             QFont("Segoe UI", 13, QFont.Weight.Bold)
         )
@@ -476,11 +477,11 @@ class CreatePODialog(QDialog):
             )
             self.items_table.setItem(
                 idx, 2,
-                QTableWidgetItem(f"${item['unit_cost']:.2f}")
+                QTableWidgetItem(format_currency(item['unit_cost']))
             )
             self.items_table.setItem(
                 idx, 3,
-                QTableWidgetItem(f"${subtotal:.2f}")
+                QTableWidgetItem(format_currency(subtotal))
             )
 
             remove_btn = QPushButton("✕")
@@ -513,7 +514,7 @@ class CreatePODialog(QDialog):
                 idx, 4, cell_widget
             )
 
-        self.total_lbl.setText(f"Total:  ${total:.2f}")
+        self.total_lbl.setText(f"Total:  {format_currency(total)}")
 
     def remove_item(self, idx):
         self.po_items.pop(idx)
@@ -626,15 +627,15 @@ class POItemsDialog(QDialog):
             table.setItem(idx, 2, QTableWidgetItem(item[2]))
             table.setItem(
                 idx, 3,
-                QTableWidgetItem(f"${float(item[4]):.2f}")
+                QTableWidgetItem(format_currency(item[4]))
             )
             table.setItem(
                 idx, 4,
-                QTableWidgetItem(f"${float(item[5]):.2f}")
+                QTableWidgetItem(format_currency(item[5]))
             )
 
         total_lbl = QLabel(
-            f"Total:  ${float(self.po[3]):.2f}"
+            f"Total:  {format_currency(self.po[3])}"
         )
         total_lbl.setFont(
             QFont("Segoe UI", 13, QFont.Weight.Bold)
@@ -893,7 +894,7 @@ class SupplierWidget(QWidget):
             ("Purchase Orders",
              stats.get("total_orders", 0),  COLORS['warning']),
             ("Total Spend",
-             f"${stats.get('total_value', 0):.2f}",
+             format_currency(stats.get('total_value', 0)),
              "#7c3aed"),
         ]:
             pill = self.build_stat_pill(label, value, color)
@@ -945,7 +946,7 @@ class SupplierWidget(QWidget):
             self.sup_table.setItem(idx, 4, orders_item)
 
             value_item = QTableWidgetItem(
-                f"${float(sup[9]):.2f}"
+                format_currency(sup[9])
             )
             value_item.setTextAlignment(
                 Qt.AlignmentFlag.AlignCenter
@@ -1043,7 +1044,7 @@ class SupplierWidget(QWidget):
             self.po_table.setCellWidget(idx, 2, badge_widget)
 
             total_item = QTableWidgetItem(
-                f"${float(po[3]):.2f}"
+                format_currency(po[3])
             )
             total_item.setFont(
                 QFont("Segoe UI", 11, QFont.Weight.Bold)

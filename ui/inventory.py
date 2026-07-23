@@ -18,6 +18,7 @@ from assets.styles import (
     COLORS, primary_button, outline_button,
     table_stylesheet, configure_table
 )
+from services.settings_service import format_currency, get_active_currency_symbol
 
 
 # ── Stock status colours ──────────────────────────────────────
@@ -94,7 +95,7 @@ class StockInDialog(QDialog):
         self.cost_spin.setRange(0, 99999)
         self.cost_spin.setDecimals(2)
         self.cost_spin.setValue(float(self.ingredient[6]))
-        self.cost_spin.setPrefix("$")
+        self.cost_spin.setPrefix(f"{get_active_currency_symbol()} ")
         self.cost_spin.setFixedHeight(40)
         self.cost_spin.setStyleSheet(input_style)
 
@@ -379,7 +380,7 @@ class IngredientDialog(QDialog):
         self.cost_spin = QDoubleSpinBox()
         self.cost_spin.setRange(0, 99999)
         self.cost_spin.setDecimals(2)
-        self.cost_spin.setPrefix("$")
+        self.cost_spin.setPrefix(f"{get_active_currency_symbol()} ")
         self.cost_spin.setFixedHeight(40)
         self.cost_spin.setStyleSheet(input_style)
 
@@ -835,7 +836,7 @@ class InventoryWidget(QWidget):
             ("Out of Stock",
              stats.get("out_of_stock", 0),  "#7c3aed"),
             ("Stock Value",
-             f"${stats.get('total_value', 0):.2f}",
+             format_currency(stats.get('total_value', 0)),
              COLORS['accent']),
         ]:
             pill = self.build_stat_pill(label, value, color)
@@ -910,7 +911,7 @@ class InventoryWidget(QWidget):
             self.ing_table.setItem(row_idx, 4, min_item)
 
             # Unit cost
-            cost_item = QTableWidgetItem(f"${item[6]:.2f}")
+            cost_item = QTableWidgetItem(format_currency(item[6]))
             cost_item.setTextAlignment(
                 Qt.AlignmentFlag.AlignCenter
             )
@@ -921,7 +922,7 @@ class InventoryWidget(QWidget):
 
             # Stock value
             stock_value = float(item[3]) * float(item[6])
-            val_item = QTableWidgetItem(f"${stock_value:.2f}")
+            val_item = QTableWidgetItem(format_currency(stock_value))
             val_item.setTextAlignment(
                 Qt.AlignmentFlag.AlignCenter
             )
@@ -1054,7 +1055,7 @@ class InventoryWidget(QWidget):
 
             # Unit cost
             cost_item = QTableWidgetItem(
-                f"${tx[5]:.2f}" if tx[5] else "—"
+                format_currency(tx[5]) if tx[5] else "—"
             )
             cost_item.setTextAlignment(
                 Qt.AlignmentFlag.AlignCenter

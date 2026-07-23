@@ -12,6 +12,7 @@ from services.pos_service import (
     get_available_menu_items, get_categories_with_items,
     save_order, get_setting
 )
+from services.settings_service import format_currency, get_active_currency_symbol
 from assets.styles import COLORS, primary_button, outline_button
 
 
@@ -21,48 +22,67 @@ class MenuItemCard(QFrame):
         super().__init__(parent)
         self.item     = item
         self.on_click = on_click
-        self.setMinimumSize(150, 100)
+        self.setObjectName("menuItemCard")
+        self.setMinimumSize(170, 128)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setStyleSheet(f"""
-            QFrame {{
+            QFrame#menuItemCard {{
                 background-color: {COLORS['bg_secondary']};
-                border-radius: 10px;
-                border: 1.5px solid {COLORS['border']};
+                border-radius: 8px;
+                border: 1px solid {COLORS['border']};
             }}
-            QFrame:hover {{
-                border: 1.5px solid {COLORS['accent']};
-                background-color: {COLORS['accent_light']};
+            QFrame#menuItemCard:hover {{
+                border: 1px solid {COLORS['border_strong']};
+                background-color: {COLORS['bg_secondary']};
             }}
             QLabel {{ background: transparent; border: none; }}
         """)
 
         shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(10)
-        shadow.setColor(QColor(0, 0, 0, 15))
-        shadow.setOffset(0, 2)
+        shadow.setBlurRadius(18)
+        shadow.setColor(QColor(15, 23, 42, 18))
+        shadow.setOffset(0, 4)
         self.setGraphicsEffect(shadow)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(4)
+        layout.setContentsMargins(14, 12, 14, 12)
+        layout.setSpacing(7)
+
+        top_row = QHBoxLayout()
+        top_row.setSpacing(8)
+
+        cat_lbl = QLabel(str(item[2]).upper())
+        cat_lbl.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
+        cat_lbl.setStyleSheet(f"""
+            color: {COLORS['text_muted']};
+            letter-spacing: 0.5px;
+        """)
+
+        price_lbl = QLabel(format_currency(item[3]))
+        price_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
+        price_lbl.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
+        price_lbl.setStyleSheet(f"color: {COLORS['accent']};")
+
+        top_row.addWidget(cat_lbl, 1)
+        top_row.addWidget(price_lbl)
 
         name_lbl = QLabel(item[1])
-        name_lbl.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
+        name_lbl.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
         name_lbl.setStyleSheet(f"color: {COLORS['text_primary']};")
         name_lbl.setWordWrap(True)
 
-        price_lbl = QLabel(f"${item[3]:.2f}")
-        price_lbl.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
-        price_lbl.setStyleSheet(f"color: {COLORS['accent']};")
+        desc = item[4] if len(item) > 4 and item[4] else ""
 
-        cat_lbl = QLabel(item[2])
-        cat_lbl.setFont(QFont("Segoe UI", 9))
-        cat_lbl.setStyleSheet(f"color: {COLORS['text_muted']};")
-
+        layout.addLayout(top_row)
         layout.addWidget(name_lbl)
-        layout.addWidget(price_lbl)
-        layout.addWidget(cat_lbl)
+        if desc:
+            desc_lbl = QLabel(desc)
+            desc_lbl.setFont(QFont("Segoe UI", 9))
+            desc_lbl.setStyleSheet(f"color: {COLORS['text_secondary']};")
+            desc_lbl.setWordWrap(True)
+            layout.addWidget(desc_lbl)
+        layout.addStretch()
 
     def mousePressEvent(self, event):
         self.on_click(self.item)
@@ -74,7 +94,9 @@ class PaymentDialog(QDialog):
         super().__init__(parent)
         self.total = total
         self.setWindowTitle("Process Payment")
-        self.setFixedSize(400, 340)
+        # The payment controls have fixed heights; leave enough vertical room
+        # for them so the amount panel and action buttons are never clipped.
+        self.setFixedSize(400, 420)
         self.setStyleSheet(f"""
             QDialog {{
                 background-color: {COLORS['bg_secondary']};
@@ -118,7 +140,7 @@ class PaymentDialog(QDialog):
         total_lbl.setFont(QFont("Segoe UI", 11))
         total_lbl.setStyleSheet(f"color: {COLORS['accent_text']};")
 
-        amount_lbl = QLabel(f"${self.total:.2f}")
+        amount_lbl = QLabel(format_currency(self.total))
         amount_lbl.setFont(QFont("Segoe UI", 22, QFont.Weight.Bold))
         amount_lbl.setStyleSheet(f"color: {COLORS['accent']};")
 
@@ -263,8 +285,8 @@ class ReceiptDialog(QDialog):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(28, 28, 28, 28)
-        layout.setSpacing(8)
+        layout.setContentsMargins(28, 24, 28, 24)
+        layout.setSpacing(6)
 
         rest_name = get_setting('restaurant_name') or "Restaurant"
         rest_addr = get_setting('restaurant_address') or ""
@@ -314,7 +336,7 @@ class ReceiptDialog(QDialog):
             name_qty.setStyleSheet(
                 f"color: {COLORS['text_primary']}; background: transparent; border: none;"
             )
-            price_lbl = QLabel(f"${item_total:.2f}")
+            price_lbl = QLabel(format_currency(item_total))
             price_lbl.setFont(QFont("Courier New", 10, QFont.Weight.Bold))
             price_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
             price_lbl.setStyleSheet(
@@ -327,9 +349,9 @@ class ReceiptDialog(QDialog):
         layout.addWidget(divider())
 
         for label, value in [
-            ("Subtotal",   f"${self.order_data['subtotal']:.2f}"),
-            ("Discount",   f"-${self.order_data['discount_amount']:.2f}"),
-            ("Tax",        f"${self.order_data['tax_amount']:.2f}"),
+            ("Subtotal",   format_currency(self.order_data['subtotal'])),
+            ("Discount",   format_currency(-self.order_data['discount_amount'])),
+            ("Tax",        format_currency(self.order_data['tax_amount'])),
         ]:
             row = QHBoxLayout()
             row.addWidget(lbl(label, 10, False, COLORS['text_secondary']))
@@ -345,9 +367,13 @@ class ReceiptDialog(QDialog):
         layout.addWidget(divider(False))
 
         total_row = QHBoxLayout()
-        total_row.addWidget(lbl("TOTAL", 13, True, COLORS['text_primary']))
-        total_val = QLabel(f"${self.order_data['total_amount']:.2f}")
+        total_row.setContentsMargins(0, 4, 0, 4)
+        total_label = lbl("TOTAL", 13, True, COLORS['text_primary'])
+        total_label.setMinimumHeight(26)
+        total_row.addWidget(total_label)
+        total_val = QLabel(format_currency(self.order_data['total_amount']))
         total_val.setFont(QFont("Courier New", 14, QFont.Weight.Bold))
+        total_val.setMinimumHeight(26)
         total_val.setAlignment(Qt.AlignmentFlag.AlignRight)
         total_val.setStyleSheet(
             f"color: {COLORS['accent']}; background: transparent; border: none;"
@@ -412,15 +438,15 @@ class ReceiptDialog(QDialog):
         for item in self.cart:
             lines.append(
                 f"  {item['name']} x{item['quantity']}"
-                f"{'':>10}${item['price'] * item['quantity']:.2f}"
+                f"{'':>10}{format_currency(item['price'] * item['quantity'])}"
             )
         lines += [
             "-" * w,
-            f"  Subtotal:{'':>18}${self.order_data['subtotal']:.2f}",
-            f"  Discount:{'':>18}-${self.order_data['discount_amount']:.2f}",
-            f"  Tax:{'':>23}${self.order_data['tax_amount']:.2f}",
+            f"  Subtotal:{'':>18}{format_currency(self.order_data['subtotal'])}",
+            f"  Discount:{'':>18}{format_currency(-self.order_data['discount_amount'])}",
+            f"  Tax:{'':>23}{format_currency(self.order_data['tax_amount'])}",
             "=" * w,
-            f"  TOTAL:{'':>21}${self.order_data['total_amount']:.2f}",
+            f"  TOTAL:{'':>21}{format_currency(self.order_data['total_amount'])}",
             "=" * w,
             "     Thank you for your order!".center(w),
             "=" * w,
@@ -783,9 +809,9 @@ class POSWidget(QWidget):
         totals_layout.setContentsMargins(14, 12, 14, 12)
         totals_layout.setSpacing(6)
 
-        self.subtotal_lbl  = self.total_row_lbl("Subtotal", "$0.00")
-        self.discount_lbl  = self.total_row_lbl("Discount", "-$0.00", COLORS['danger'])
-        self.tax_lbl       = self.total_row_lbl("Tax (16%)", "$0.00")
+        self.subtotal_lbl  = self.total_row_lbl("Subtotal", format_currency(0))
+        self.discount_lbl  = self.total_row_lbl("Discount", format_currency(0), COLORS['danger'])
+        self.tax_lbl       = self.total_row_lbl("Tax (16%)", format_currency(0))
 
         div_total = QFrame()
         div_total.setFixedHeight(1)
@@ -795,7 +821,7 @@ class POSWidget(QWidget):
         total_title = QLabel("TOTAL")
         total_title.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
         total_title.setStyleSheet(f"color: {COLORS['text_primary']};")
-        self.grand_total_lbl = QLabel("$0.00")
+        self.grand_total_lbl = QLabel(format_currency(0))
         self.grand_total_lbl.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
         self.grand_total_lbl.setStyleSheet(f"color: {COLORS['accent']};")
         self.grand_total_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
@@ -1028,7 +1054,7 @@ class POSWidget(QWidget):
             name_lbl = QLabel(item['name'])
             name_lbl.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
             name_lbl.setStyleSheet(f"color: {COLORS['text_primary']};")
-            unit_lbl = QLabel(f"${item['price']:.2f} each")
+            unit_lbl = QLabel(f"{format_currency(item['price'])} each")
             unit_lbl.setFont(QFont("Segoe UI", 9))
             unit_lbl.setStyleSheet(f"color: {COLORS['text_muted']};")
             name_col.addWidget(name_lbl)
@@ -1085,7 +1111,7 @@ class POSWidget(QWidget):
             )
 
             item_total = item['price'] * item['quantity']
-            total_lbl = QLabel(f"${item_total:.2f}")
+            total_lbl = QLabel(format_currency(item_total))
             total_lbl.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
             total_lbl.setStyleSheet(f"color: {COLORS['accent']};")
             total_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
@@ -1361,13 +1387,13 @@ class POSWidget(QWidget):
         tax_amount      = round(taxable * (tax_rate / 100), 2) if tax_enabled else 0
         total           = round(taxable + tax_amount, 2)
 
-        self.subtotal_lbl._value_lbl.setText(f"${subtotal:.2f}")
-        self.discount_lbl._value_lbl.setText(f"-${discount_amount:.2f}")
-        self.tax_lbl._value_lbl.setText(f"${tax_amount:.2f}")
-        self.grand_total_lbl.setText(f"${total:.2f}")
+        self.subtotal_lbl._value_lbl.setText(format_currency(subtotal))
+        self.discount_lbl._value_lbl.setText(format_currency(-discount_amount))
+        self.tax_lbl._value_lbl.setText(format_currency(tax_amount))
+        self.grand_total_lbl.setText(format_currency(total))
 
         if total > 0:
-            self.charge_btn.setText(f"⚡  Charge  ${total:.2f}")
+            self.charge_btn.setText(f"⚡  Charge  {format_currency(total)}")
         else:
             self.charge_btn.setText("⚡  Charge Customer")
 

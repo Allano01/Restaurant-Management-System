@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QDialog, QFormLayout,
     QLineEdit, QComboBox, QMessageBox, QHeaderView, QFrame,
-    QGraphicsDropShadowEffect, QMenu
+    QGraphicsDropShadowEffect, QMenu, QTextEdit
 )
 from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QFont, QColor, QCursor
@@ -14,6 +14,7 @@ from assets.styles import (
     COLORS, primary_button, outline_button,
     table_stylesheet, configure_table
 )
+from services.settings_service import format_currency
 
 
 class MenuItemDialog(QDialog):
@@ -22,7 +23,7 @@ class MenuItemDialog(QDialog):
         self.item = item
         self.categories = categories or []
         self.setWindowTitle("Edit Item" if item else "Add New Item")
-        self.setFixedSize(460, 400)
+        self.setFixedSize(500, 500)
         self.setStyleSheet(f"""
             QDialog {{
                 background-color: {COLORS['bg_secondary']};
@@ -33,7 +34,7 @@ class MenuItemDialog(QDialog):
                 font-family: Segoe UI;
                 background: transparent;
             }}
-            QLineEdit, QComboBox {{
+            QLineEdit, QComboBox, QTextEdit {{
                 background-color: {COLORS['bg_tertiary']};
                 border: 1.5px solid {COLORS['border']};
                 border-radius: 8px;
@@ -42,7 +43,10 @@ class MenuItemDialog(QDialog):
                 font-size: 13px;
                 font-family: Segoe UI;
             }}
-            QLineEdit:focus, QComboBox:focus {{
+            QTextEdit {{
+                min-height: 88px;
+            }}
+            QLineEdit:focus, QComboBox:focus, QTextEdit:focus {{
                 border: 1.5px solid {COLORS['accent']};
                 background-color: white;
             }}
@@ -90,9 +94,11 @@ class MenuItemDialog(QDialog):
         self.cost_input.setPlaceholderText("e.g. 6.00  (optional)")
         self.cost_input.setFixedHeight(40)
 
-        self.desc_input = QLineEdit()
-        self.desc_input.setPlaceholderText("Short description  (optional)")
-        self.desc_input.setFixedHeight(40)
+        self.desc_input = QTextEdit()
+        self.desc_input.setPlaceholderText(
+            "Describe how this item should appear on the POS card."
+        )
+        self.desc_input.setFixedHeight(96)
 
         for label_text, widget in [
             ("Item Name *",     self.name_input),
@@ -110,7 +116,7 @@ class MenuItemDialog(QDialog):
             self.name_input.setText(self.item[1])
             self.price_input.setText(str(self.item[3]))
             self.cost_input.setText(str(self.item[4]) if self.item[4] else "")
-            self.desc_input.setText(self.item[5] if self.item[5] else "")
+            self.desc_input.setPlainText(self.item[5] if self.item[5] else "")
             for i in range(self.category_combo.count()):
                 if self.category_combo.itemText(i) == self.item[2]:
                     self.category_combo.setCurrentIndex(i)
@@ -161,7 +167,7 @@ class MenuItemDialog(QDialog):
         cat_id    = self.category_combo.currentData()
         price_str = self.price_input.text().strip()
         cost_str  = self.cost_input.text().strip()
-        desc      = self.desc_input.text().strip()
+        desc      = self.desc_input.toPlainText().strip()
 
         if not name:
             QMessageBox.warning(self, "Validation", "Item name is required.")
@@ -353,9 +359,9 @@ class MenuManagementWidget(QWidget):
         table_layout.setSpacing(0)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(7)
+        self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
-            "Code", "Item Name", "Category",
+            "Code", "Item Name", "Description", "Category",
             "Price", "Cost", "Status", "Actions"
         ])
         self.table.setStyleSheet(
@@ -366,11 +372,11 @@ class MenuManagementWidget(QWidget):
             )
         )
         self.table.setColumnWidth(0, 90)   # Code
-        self.table.setColumnWidth(2, 180)  # Category
-        self.table.setColumnWidth(3, 120)  # Price
-        self.table.setColumnWidth(4, 120)  # Cost
-        self.table.setColumnWidth(5, 170)  # Status
-        self.table.setColumnWidth(6, 110)  # Actions
+        self.table.setColumnWidth(3, 160)  # Category
+        self.table.setColumnWidth(4, 110)  # Price
+        self.table.setColumnWidth(5, 110)  # Cost
+        self.table.setColumnWidth(6, 150)  # Status
+        self.table.setColumnWidth(7, 100)  # Actions
         self.table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Fixed
         )
@@ -393,23 +399,27 @@ class MenuManagementWidget(QWidget):
         )  # Item Name
 
         header.setSectionResizeMode(
-            2, QHeaderView.ResizeMode.Fixed
-        )  # Category
+            2, QHeaderView.ResizeMode.Stretch
+        )  # Description
 
         header.setSectionResizeMode(
             3, QHeaderView.ResizeMode.Fixed
-        )  # Price
+        )  # Category
 
         header.setSectionResizeMode(
             4, QHeaderView.ResizeMode.Fixed
-        )  # Cost
+        )  # Price
 
         header.setSectionResizeMode(
             5, QHeaderView.ResizeMode.Fixed
-        )  # Status
+        )  # Cost
 
         header.setSectionResizeMode(
             6, QHeaderView.ResizeMode.Fixed
+        )  # Status
+
+        header.setSectionResizeMode(
+            7, QHeaderView.ResizeMode.Fixed
         )  # Actions
 
         header.setDefaultAlignment(
@@ -417,6 +427,10 @@ class MenuManagementWidget(QWidget):
             Qt.AlignmentFlag.AlignVCenter
         )
         self.table.horizontalHeaderItem(1).setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft |
+            Qt.AlignmentFlag.AlignVCenter
+        )
+        self.table.horizontalHeaderItem(2).setTextAlignment(
             Qt.AlignmentFlag.AlignLeft |
             Qt.AlignmentFlag.AlignVCenter
         )
@@ -520,6 +534,17 @@ class MenuManagementWidget(QWidget):
 
             self.table.setItem(row_idx, 1, name_item)
 
+            desc_text = item[5] or ""
+            desc_item = QTableWidgetItem(desc_text)
+            desc_item.setToolTip(desc_text)
+            desc_item.setFont(QFont("Segoe UI", 11))
+            desc_item.setForeground(QColor(COLORS['text_secondary']))
+            desc_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignLeft |
+                Qt.AlignmentFlag.AlignVCenter
+            )
+            self.table.setItem(row_idx, 2, desc_item)
+
             # Category — center aligned to match header
             cat_item = QTableWidgetItem(item[2])
             cat_item.setFont(QFont("Segoe UI", 12))
@@ -527,10 +552,10 @@ class MenuManagementWidget(QWidget):
             cat_item.setTextAlignment(
                 Qt.AlignmentFlag.AlignCenter
             )
-            self.table.setItem(row_idx, 2, cat_item)
+            self.table.setItem(row_idx, 3, cat_item)
 
             # Price — right aligned, bold
-            price_item = QTableWidgetItem(f"${item[3]:.2f}")
+            price_item = QTableWidgetItem(format_currency(item[3]))
             price_item.setTextAlignment(
                 Qt.AlignmentFlag.AlignCenter
             )
@@ -540,17 +565,17 @@ class MenuManagementWidget(QWidget):
             price_item.setForeground(
                 QColor(COLORS['text_primary'])
             )
-            self.table.setItem(row_idx, 3, price_item)
+            self.table.setItem(row_idx, 4, price_item)
 
             # Cost — right aligned, normal weight
-            cost_val  = f"${item[4]:.2f}" if item[4] else "—"
+            cost_val  = format_currency(item[4]) if item[4] else "—"
             cost_item = QTableWidgetItem(cost_val)
             cost_item.setTextAlignment(
                 Qt.AlignmentFlag.AlignCenter
             )
             cost_item.setFont(QFont("Segoe UI", 12))
             cost_item.setForeground(QColor("#9ca3af"))
-            self.table.setItem(row_idx, 4, cost_item)
+            self.table.setItem(row_idx, 5, cost_item)
 
             # Status badge
             badge_widget = QWidget()
@@ -577,7 +602,7 @@ class MenuManagementWidget(QWidget):
             """)
             badge_layout.addWidget(badge)
             self.table.setCellWidget(
-                row_idx, 5, badge_widget
+                row_idx, 6, badge_widget
             )
 
             # Action button — compact
@@ -619,7 +644,7 @@ class MenuManagementWidget(QWidget):
             )
             action_layout.addWidget(dots_btn)
             self.table.setCellWidget(
-                row_idx, 6, action_widget
+                row_idx, 7, action_widget
             )
 
     def show_action_menu(self, item, button=None):
@@ -673,6 +698,7 @@ class MenuManagementWidget(QWidget):
             item for item in self.menu_items
             if text.lower() in item[1].lower()
             or text.lower() in item[2].lower()
+            or text.lower() in (item[5] or "").lower()
         ]
         self.populate_table(filtered)
 

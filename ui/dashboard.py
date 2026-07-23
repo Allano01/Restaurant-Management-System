@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QColor, QLinearGradient, QPalette
 from services.menu_service import get_dashboard_stats
+from services.settings_service import format_currency
 from assets.styles import (
     COLORS, app_stylesheet, primary_button,
     outline_button, sidebar_button_style
@@ -251,9 +252,10 @@ class TopBar(QFrame):
 
 
 class DashboardHome(QWidget):
-    def __init__(self, user):
+    def __init__(self, user, navigate_callback=None):
         super().__init__()
         self.user = user
+        self.navigate_callback = navigate_callback
         self.setStyleSheet(f"background-color: {COLORS['bg_primary']};")
         self.setup_ui()
         self.timer = QTimer()
@@ -330,6 +332,13 @@ class DashboardHome(QWidget):
         actions_row = QHBoxLayout()
         actions_row.setSpacing(12)
 
+        quick_action_targets = {
+            "New Order": 2,
+            "Menu Items": 1,
+            "Sales Report": 9,
+            "Manage Users": 10,
+        }
+
         for label, icon, color, tip in [
             ("New Order",     "🛒", COLORS['accent'],  "Start a new customer order"),
             ("Menu Items",    "🍽", COLORS['blue'],    "Manage menu"),
@@ -340,6 +349,9 @@ class DashboardHome(QWidget):
             btn.setFixedHeight(46)
             btn.setToolTip(tip)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.clicked.connect(
+                lambda _, index=quick_action_targets[label]: self.open_quick_action(index)
+            )
             btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: {COLORS['bg_secondary']};
@@ -380,7 +392,7 @@ class DashboardHome(QWidget):
 
         # Gradient cards
         for title, value, subtitle, icon, g1, g2 in [
-            ("Sales Today",  f"${stats['sales_today']:.2f}",
+            ("Sales Today",  format_currency(stats['sales_today']),
              "Total revenue today", "💰", "#16a34a", "#15803d"),
             ("Orders Today", str(stats['orders_today']),
              "Completed orders",    "🛒", "#7c3aed", "#6d28d9"),
@@ -411,6 +423,10 @@ class DashboardHome(QWidget):
 
     def refresh_stats(self):
         self.load_stats()
+
+    def open_quick_action(self, index):
+        if self.navigate_callback:
+            self.navigate_callback(index)
 
 
 class DashboardWindow(QMainWindow):
@@ -643,7 +659,7 @@ class DashboardWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.stack.setStyleSheet(f"background-color: {COLORS['bg_primary']};")
 
-        self.stack.addWidget(DashboardHome(self.user))
+        self.stack.addWidget(DashboardHome(self.user, self.navigate))
 
         from ui.menu_management import MenuManagementWidget
         self.stack.addWidget(MenuManagementWidget(self.user))

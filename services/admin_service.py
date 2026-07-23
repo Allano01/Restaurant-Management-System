@@ -176,6 +176,9 @@ def save_setting(key, value):
                 VALUES (?, ?)
         """, (key, value, key, key, value))
         conn.commit()
+        # Make setting changes available to all active UI helpers immediately.
+        from services.settings_service import update_settings_cache
+        update_settings_cache(key, value)
         return True
     except Exception as e:
         print(f"Error saving setting: {e}")

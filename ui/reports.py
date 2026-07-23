@@ -22,6 +22,7 @@ from assets.styles import (
     COLORS, primary_button, outline_button,
     table_stylesheet, configure_table
 )
+from services.settings_service import format_currency
 
 
 class ReportsWidget(QWidget):
@@ -516,7 +517,7 @@ class ReportsWidget(QWidget):
 
         for title, value, sub, color in [
             ("Total Revenue",
-             f"${summary.get('total_revenue', 0):.2f}",
+             format_currency(summary.get('total_revenue', 0)),
              "Gross sales",
              COLORS['accent']),
             ("Total Orders",
@@ -524,15 +525,15 @@ class ReportsWidget(QWidget):
              "Completed orders",
              COLORS['blue']),
             ("Avg Order Value",
-             f"${summary.get('avg_order', 0):.2f}",
+             format_currency(summary.get('avg_order', 0)),
              "Per transaction",
              COLORS['warning']),
             ("Total Discounts",
-             f"${summary.get('total_discount', 0):.2f}",
+             format_currency(summary.get('total_discount', 0)),
              "Discounts given",
              COLORS['danger']),
             ("Tax Collected",
-             f"${summary.get('total_tax', 0):.2f}",
+             format_currency(summary.get('total_tax', 0)),
              "VAT collected",
              "#7c3aed"),
         ]:

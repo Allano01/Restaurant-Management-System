@@ -319,49 +319,53 @@ class TableCard(QFrame):
         status         = table[4]
         colors         = STATUS_COLORS.get(status, STATUS_COLORS["Available"])
 
-        self.setFixedSize(160, 140)
+        self.setObjectName("tableCard")
+        self.setFixedSize(170, 128)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setStyleSheet(f"""
-            QFrame {{
-                background-color: {colors['bg']};
-                border-radius: 12px;
-                border: 2px solid {colors['border']};
+            QFrame#tableCard {{
+                background-color: {COLORS['bg_secondary']};
+                border-radius: 8px;
+                border: 1px solid {COLORS['border']};
             }}
-            QFrame:hover {{
-                border: 2px solid {colors['border']};
-                background-color: white;
+            QFrame#tableCard:hover {{
+                border: 1px solid {COLORS['border_strong']};
+                background-color: {COLORS['bg_secondary']};
             }}
             QLabel {{ background: transparent; border: none; }}
         """)
 
         shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(12)
-        shadow.setColor(QColor(0, 0, 0, 20))
-        shadow.setOffset(0, 3)
+        shadow.setBlurRadius(18)
+        shadow.setColor(QColor(15, 23, 42, 18))
+        shadow.setOffset(0, 4)
         self.setGraphicsEffect(shadow)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(4)
+        layout.setContentsMargins(14, 12, 14, 12)
+        layout.setSpacing(7)
+
+        top_row = QHBoxLayout()
+        top_row.setSpacing(8)
 
         # Table number
         num_lbl = QLabel(f"Table {table[1]}")
-        num_lbl.setFont(QFont("Segoe UI", 14, QFont.Weight.Bold))
-        num_lbl.setStyleSheet(f"color: {colors['text']};")
+        num_lbl.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
+        num_lbl.setStyleSheet(f"color: {COLORS['text_primary']};")
 
         # Capacity
-        cap_lbl = QLabel(f"👥  {table[2]} guests")
+        cap_lbl = QLabel(f"{table[2]} guests")
         cap_lbl.setFont(QFont("Segoe UI", 10))
         cap_lbl.setStyleSheet(f"color: {COLORS['text_secondary']};")
 
         # Location
-        loc_lbl = QLabel(f"📍  {table[3]}")
+        loc_lbl = QLabel(str(table[3]))
         loc_lbl.setFont(QFont("Segoe UI", 9))
         loc_lbl.setStyleSheet(f"color: {COLORS['text_muted']};")
 
         # Customer name if occupied
         if table[7]:
-            cust_lbl = QLabel(f"👤  {table[7]}")
+            cust_lbl = QLabel(str(table[7]))
             cust_lbl.setFont(QFont("Segoe UI", 9))
             cust_lbl.setStyleSheet(
                 f"color: {COLORS['text_secondary']};"
@@ -373,21 +377,23 @@ class TableCard(QFrame):
         badge = QLabel(status)
         badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         badge.setFixedHeight(22)
-        badge.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
+        badge.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
         badge.setStyleSheet(f"""
             color: {colors['text']};
             background-color: {colors['badge']};
             border-radius: 10px;
-            padding: 0 10px;
+            padding: 0 9px;
             border: none;
         """)
 
-        layout.addWidget(num_lbl)
+        top_row.addWidget(num_lbl, 1)
+        top_row.addWidget(badge)
+
+        layout.addLayout(top_row)
         layout.addWidget(cap_lbl)
         layout.addWidget(loc_lbl)
         layout.addWidget(cust_lbl)
         layout.addStretch()
-        layout.addWidget(badge)
 
     def mousePressEvent(self, event):
         self.on_action(self.table)

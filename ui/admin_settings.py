@@ -13,6 +13,10 @@ from services.admin_service import (
     toggle_user_status, get_all_settings,
     save_setting, get_audit_logs, backup_database
 )
+from services.settings_service import (
+    DEFAULT_CURRENCIES, get_currency_options, save_custom_currencies,
+    store_logo, remove_managed_logo
+)
 from assets.styles import COLORS, primary_button, outline_button, table_stylesheet
 
 
@@ -630,8 +634,6 @@ class SettingsWidget(QWidget):
         content_layout.addSpacing(4)
 
         for label, key, ph in [
-            ("Currency Symbol", "currency",
-             "e.g. $"),
             ("Tax Rate (%)", "tax_rate",
              "e.g. 16"),
             ("Loyalty Points/Dollar",
@@ -640,6 +642,50 @@ class SettingsWidget(QWidget):
             row, inp = field_row(label, key, ph)
             content_layout.addLayout(row)
             self.s_fields[key] = inp
+
+        # Keep currencies controlled so every screen can use the same symbol.
+        currency_row = QHBoxLayout()
+        currency_row.setSpacing(12)
+        currency_label = QLabel("Currency")
+        currency_label.setFixedWidth(180)
+        currency_label.setFixedHeight(40)
+        currency_label.setFont(QFont("Segoe UI", 11))
+        currency_label.setStyleSheet(f"color: {COLORS['text_secondary']}; background: transparent;")
+        self.currency_combo = QComboBox()
+        self.currency_combo.setFixedHeight(40)
+        self.currency_combo.setStyleSheet(input_style)
+        currency_row.addWidget(currency_label)
+        currency_row.addWidget(self.currency_combo)
+        content_layout.addLayout(currency_row)
+
+        custom_currency_row = QHBoxLayout()
+        custom_currency_row.setSpacing(8)
+        custom_currency_label = QLabel("Custom Currency")
+        custom_currency_label.setFixedWidth(180)
+        custom_currency_label.setFont(QFont("Segoe UI", 11))
+        custom_currency_label.setStyleSheet(f"color: {COLORS['text_secondary']}; background: transparent;")
+        self.custom_currency_input = QLineEdit()
+        self.custom_currency_input.setPlaceholderText("Name | symbol  (e.g. Nigerian Naira | ₦)")
+        self.custom_currency_input.setFixedHeight(40)
+        self.custom_currency_input.setStyleSheet(input_style)
+        add_currency_btn = QPushButton("Add")
+        add_currency_btn.setFixedHeight(40)
+        add_currency_btn.setStyleSheet(outline_button())
+        add_currency_btn.clicked.connect(self.add_custom_currency)
+        remove_currency_btn = QPushButton("Remove")
+        remove_currency_btn.setFixedHeight(40)
+        remove_currency_btn.setStyleSheet(outline_button())
+        remove_currency_btn.clicked.connect(self.remove_custom_currency)
+        restore_currency_btn = QPushButton("Restore Defaults")
+        restore_currency_btn.setFixedHeight(40)
+        restore_currency_btn.setStyleSheet(outline_button())
+        restore_currency_btn.clicked.connect(self.restore_default_currencies)
+        custom_currency_row.addWidget(custom_currency_label)
+        custom_currency_row.addWidget(self.custom_currency_input)
+        custom_currency_row.addWidget(add_currency_btn)
+        custom_currency_row.addWidget(remove_currency_btn)
+        custom_currency_row.addWidget(restore_currency_btn)
+        content_layout.addLayout(custom_currency_row)
 
         content_layout.addSpacing(16)
 
@@ -793,9 +839,17 @@ class SettingsWidget(QWidget):
         browse_btn.setStyleSheet(outline_button())
         browse_btn.clicked.connect(self.browse_logo)
 
+        remove_logo_btn = QPushButton("Remove")
+        remove_logo_btn.setFixedHeight(40)
+        remove_logo_btn.setFixedWidth(90)
+        remove_logo_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        remove_logo_btn.setStyleSheet(outline_button())
+        remove_logo_btn.clicked.connect(self.remove_logo)
+
         logo_row.addWidget(logo_lbl)
         logo_row.addWidget(self.logo_path_input)
         logo_row.addWidget(browse_btn)
+        logo_row.addWidget(remove_logo_btn)
         content_layout.addLayout(logo_row)
 
         # Logo preview
@@ -1041,11 +1095,68 @@ class SettingsWidget(QWidget):
         if logo_path:
             self.logo_path_input.setText(logo_path)
             self._show_logo_preview(logo_path)
+        else:
+            self._show_logo_preview("")
+        self.refresh_currency_options(settings.get("currency", "$"))
+
+    def refresh_currency_options(self, selected_symbol=None):
+        self.currency_combo.blockSignals(True)
+        self.currency_combo.clear()
+        for currency in get_currency_options():
+            self.currency_combo.addItem(
+                f"{currency['name']} ({currency['symbol']})",
+                currency['symbol']
+            )
+        index = self.currency_combo.findData(selected_symbol or "$")
+        self.currency_combo.setCurrentIndex(max(index, 0))
+        self.currency_combo.blockSignals(False)
+
+    def _custom_currencies(self):
+        import json
+        try:
+            return json.loads(get_all_settings().get("custom_currencies", ""))
+        except (TypeError, json.JSONDecodeError):
+            return []
+
+    def add_custom_currency(self):
+        text = self.custom_currency_input.text().strip()
+        if "|" not in text:
+            QMessageBox.warning(self, "Invalid Currency", "Enter a name and symbol separated by |.")
+            return
+        name, symbol = (part.strip() for part in text.split("|", 1))
+        if not name or not symbol:
+            QMessageBox.warning(self, "Invalid Currency", "Both a currency name and symbol are required.")
+            return
+        custom = self._custom_currencies()
+        currency = {"name": name, "symbol": symbol}
+        if currency not in custom and currency not in DEFAULT_CURRENCIES:
+            custom.append(currency)
+            save_custom_currencies(custom)
+        self.refresh_currency_options(symbol)
+        self.custom_currency_input.clear()
+
+    def remove_custom_currency(self):
+        symbol = self.currency_combo.currentData()
+        if any(currency["symbol"] == symbol for currency in DEFAULT_CURRENCIES):
+            QMessageBox.information(self, "Default Currency", "Default currencies cannot be removed.")
+            return
+        custom = [currency for currency in self._custom_currencies()
+                  if currency.get("symbol") != symbol]
+        save_custom_currencies(custom)
+        self.refresh_currency_options("$")
+
+    def restore_default_currencies(self):
+        save_custom_currencies([])
+        self.refresh_currency_options("$")
 
     def _show_logo_preview(self, path):
         import os
         from PyQt6.QtGui import QPixmap
-        if not path or not os.path.exists(path):
+        if not path:
+            self.logo_preview.setPixmap(QPixmap())
+            self.logo_preview.setText("No logo selected — default branding will be used")
+            return
+        if not os.path.exists(path):
             self.logo_preview.setText("⚠️  File not found")
             return
         try:
@@ -1237,13 +1348,13 @@ class SettingsWidget(QWidget):
     def save_settings(self):
         for key, inp in self.s_fields.items():
             save_setting(key, inp.text().strip())
+        save_setting("currency", self.currency_combo.currentData() or "$")
 
         reply = QMessageBox.question(
             self,
             "Settings Saved",
             "✅  All settings saved successfully.\n\n"
-            "The app needs to restart to apply colour and "
-            "logo changes.\n\n"
+            "The app needs to restart to apply colour changes.\n\n"
             "Restart now?",
             QMessageBox.StandardButton.Yes |
             QMessageBox.StandardButton.No
@@ -1273,11 +1384,20 @@ class SettingsWidget(QWidget):
         path = QFileDialog.getOpenFileName(
             self, "Select Logo Image",
             "",
-            "Image Files (*.png *.jpg *.jpeg *.bmp *.gif)"
+            "Image Files (*.png *.jpg *.jpeg *.bmp)"
         )[0]
         if path:
-            self.logo_path_input.setText(path)
-            self._show_logo_preview(path)
+            success, stored_path, error = store_logo(path)
+            if not success:
+                QMessageBox.critical(self, "Logo Upload Failed", error)
+                return
+            self.logo_path_input.setText(stored_path)
+            self._show_logo_preview(stored_path)
+
+    def remove_logo(self):
+        remove_managed_logo(self.logo_path_input.text().strip())
+        self.logo_path_input.clear()
+        self._show_logo_preview("")
 
     def do_backup(self):
         path = QFileDialog.getSaveFileName(

@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QCheckBox, QToolButton, QGraphicsDropShadowEffect, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QEvent, QSettings
-from PyQt6.QtGui import QFont, QColor
+from PyQt6.QtGui import QFont, QColor, QPixmap
 from services.auth_service import authenticate_user, log_action
 from assets.styles import COLORS, primary_button
 
@@ -50,6 +50,18 @@ class LoginWindow(QWidget):
         logo_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         logo_icon.setFont(QFont("Segoe UI", 17, QFont.Weight.Bold))
         logo_icon.setStyleSheet("background: transparent; border: none; color: white;")
+        try:
+            from services.settings_service import get_settings
+            logo_path = get_settings().get("logo_path", "")
+            pixmap = QPixmap(logo_path)
+            if logo_path and not pixmap.isNull():
+                logo_icon.setText("")
+                logo_icon.setPixmap(pixmap.scaled(
+                    50, 50, Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                ))
+        except Exception:
+            pass  # The RM placeholder remains available when no logo is set.
         logo_inner.addWidget(logo_icon)
 
         try:
